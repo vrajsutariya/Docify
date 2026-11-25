@@ -1,11 +1,46 @@
 {
-  "appName": "Docify",
-  "tagline": "SmartDataAbstract AI",
+  "app": {
+    "name": "Docify",
+    "tagline": "AI-Powered Document & Data Intelligence",
+    "subtitle": "Next-Gen Document & Data AI Suite"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "documind": "DocuMind",
+    "datainsight": "DataInsight",
+    "smarttools": "SmartTools",
+    "history": "History",
+    "favorites": "Favorites",
+    "settings": "Settings",
+    "admin": "Admin Panel"
+  },
   "common": {
+    "search": "Search anything...",
+    "searchPlaceholder": "Search tools, docs, analyses... (Ctrl + K)",
+    "upload": "Upload File",
     "getStarted": "Get Started",
-    "upload": "Upload",
+    "lightMode": "Light Mode",
+    "darkMode": "Dark Mode",
+    "notifications": "Notifications",
+    "noNotifications": "No new notifications",
+    "profile": "Profile",
+    "logout": "Log Out",
     "cancel": "Cancel",
-    "submit": "Submit",
-    "loading": "Loading..."
+    "confirm": "Confirm",
+    "save": "Save",
+    "delete": "Delete",
+    "loading": "Loading...",
+    "close": "Close",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar",
+    "status": "Status",
+    "action": "Action",
+    "recent": "Recent Activity",
+    "viewAll": "View All"
+  },
+  "modules": {
+    "documindDesc": "Document intelligence, OCR, abstraction, and page-cited RAG Q&A",
+    "datainsightDesc": "Tabular data analytics, profiling, and smart chart recommendations",
+    "smarttoolsDesc": "30+ high-performance PDF manipulation and media utilities"
   }
 }

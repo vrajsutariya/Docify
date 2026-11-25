@@ -1,11 +1,20 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-const ThemeContext = createContext();
+export const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  const [theme, setTheme] = useState(() => {
-    const saved = localStorage.getItem('docify_theme');
-    return saved || 'dark'; // Dark mode default-ready
+  const [theme, setThemeState] = useState(() => {
+    // 1. Check saved choice in localStorage
+    const savedTheme = localStorage.getItem('docify-theme');
+    if (savedTheme === 'light' || savedTheme === 'dark') {
+      return savedTheme;
+    }
+    // 2. Check system preference (prefers-color-scheme: dark)
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    // 3. Default to dark mode
+    return 'dark';
   });
 
   useEffect(() => {
@@ -15,15 +24,21 @@ export const ThemeProvider = ({ children }) => {
     } else {
       root.classList.remove('dark');
     }
-    localStorage.setItem('docify_theme', theme);
+    localStorage.setItem('docify-theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+    setThemeState((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
+  const setTheme = (newTheme) => {
+    if (newTheme === 'dark' || newTheme === 'light') {
+      setThemeState(newTheme);
+    }
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, isDark: theme === 'dark' }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme, isDark: theme === 'dark' }}>
       {children}
     </ThemeContext.Provider>
   );

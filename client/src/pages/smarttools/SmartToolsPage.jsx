@@ -1,9 +1,13 @@
 import React from 'react';
 import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
-import { FileArchive, Scissors, Lock, Scan, QrCode, RefreshCw } from 'lucide-react';
+import { Button } from '../../components/common/Button';
+import { Scissors, Lock, Scan, RefreshCw, Wrench } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
 
 export const SmartToolsPage = () => {
+  const { t } = useLanguage();
+
   const toolCategories = [
     {
       category: 'PDF Manipulation',
@@ -28,15 +32,17 @@ export const SmartToolsPage = () => {
   ];
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto px-4 py-8">
+    <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-light-border dark:border-dark-border pb-6">
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <h1 className="font-heading text-3xl font-bold text-light-heading dark:text-white">SmartTools</h1>
-            <Badge variant="primary">30+ Suite</Badge>
+            <h1 className="font-heading text-3xl font-bold text-light-heading dark:text-dark-heading">
+              {t('nav.smarttools', 'SmartTools')}
+            </h1>
+            <Badge variant="brand">30+ Suite</Badge>
           </div>
-          <p className="text-sm text-light-text dark:text-dark-text-secondary">
-            High-precision document processing, conversions, encryption, and media utilities.
+          <p className="text-sm text-light-body dark:text-dark-body">
+            {t('modules.smarttoolsDesc', 'Comprehensive PDF manipulation, conversion, OCR scanning, watermarking, encryption, and productivity utilities.')}
           </p>
         </div>
       </div>
@@ -46,17 +52,20 @@ export const SmartToolsPage = () => {
           const Icon = cat.icon;
           return (
             <Card key={cat.category} className="space-y-4">
-              <div className="flex items-center gap-2.5 text-brand-red dark:text-brand-red-bright">
+              <div className="flex items-center gap-2.5 text-accent-dark dark:text-accent-light">
                 <Icon className="w-5 h-5" />
-                <h3 className="font-heading font-bold text-base text-light-heading dark:text-white">{cat.category}</h3>
+                <h3 className="font-heading font-bold text-base text-light-heading dark:text-dark-heading">
+                  {cat.category}
+                </h3>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                {cat.tools.map((t) => (
+                {cat.tools.map((toolName) => (
                   <button
-                    key={t}
-                    className="p-3 rounded-xl bg-light-surface/60 dark:bg-dark-bg/60 border border-light-border dark:border-dark-border hover:border-brand-red/50 hover:text-brand-red dark:hover:text-brand-red-bright text-xs font-medium text-left transition-all"
+                    key={toolName}
+                    type="button"
+                    className="p-3 rounded-xl bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border hover:border-accent dark:hover:border-accent-light hover:text-accent-dark dark:hover:text-accent-light text-xs font-medium text-left transition-all"
                   >
-                    {t}
+                    {toolName}
                   </button>
                 ))}
               </div>
@@ -67,3 +76,5 @@ export const SmartToolsPage = () => {
     </div>
   );
 };
+
+export default SmartToolsPage;

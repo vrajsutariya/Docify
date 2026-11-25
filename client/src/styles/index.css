@@ -4,47 +4,96 @@
 
 @layer base {
   :root {
-    --color-primary: #DC2626;
-    --color-primary-hover: #B91C1C;
-    --color-accent: #F97316;
-    --color-accent-hover: #EA580C;
+    --bg-color: #FFFFFF;
+    --surface-color: #F4F4F5;
+    --border-color: #E4E4E7;
+    --heading-color: #18181B;
+    --body-color: #52525B;
+    --accent-color: #06B6D4;
+    --accent-hover: #0891B2;
+    --link-color: #0E7490;
+  }
+
+  .dark {
+    --bg-color: #000000;
+    --surface-color: #111111;
+    --border-color: #262626;
+    --heading-color: #FAFAFA;
+    --body-color: #A1A1AA;
+    --accent-color: #22D3EE;
+    --accent-hover: #06B6D4;
+    --link-color: #22D3EE;
   }
 
   body {
+    background-color: var(--bg-color);
+    color: var(--body-color);
+    font-family: 'Inter', 'Noto Sans Gujarati', 'Noto Sans Devanagari', sans-serif;
     line-height: 1.6;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 200ms ease, color 200ms ease;
   }
 
-  /* Multilingual line-height safety to avoid glyph ascender/descender clipping */
-  .font-gujarati,
-  :lang(gu) {
-    font-family: 'Noto Sans Gujarati', sans-serif;
-    line-height: 1.75 !important;
-  }
-
-  .font-devanagari,
-  :lang(hi) {
-    font-family: 'Noto Sans Devanagari', sans-serif;
-    line-height: 1.75 !important;
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', 'Noto Sans Gujarati', 'Noto Sans Devanagari', sans-serif;
+    color: var(--heading-color);
   }
 }
 
 @layer utilities {
-  /* Scrollbar styles for dark mode */
-  .custom-scrollbar::-webkit-scrollbar {
+  .btn-gradient {
+    background: linear-gradient(135deg, #06B6D4 0%, #0E7490 100%);
+    color: #FFFFFF;
+    transition: all 200ms ease;
+  }
+
+  .btn-gradient:hover {
+    box-shadow: 0 4px 20px -2px rgba(6, 182, 212, 0.45);
+    transform: translateY(-1px) scale(1.01);
+  }
+
+  .btn-gradient:active {
+    transform: translateY(0) scale(0.99);
+  }
+
+  .card-surface {
+    background-color: #F4F4F5;
+    border: 1px solid #E4E4E7;
+    border-radius: 16px;
+    transition: background-color 200ms ease, border-color 200ms ease;
+  }
+
+  .dark .card-surface {
+    background-color: #111111;
+    border-color: #262626;
+  }
+
+  .indic-text {
+    line-height: 1.7 !important;
+  }
+
+  /* Custom clean thin scrollbar */
+  ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
-  .custom-scrollbar::-webkit-scrollbar-track {
+
+  ::-webkit-scrollbar-track {
     background: transparent;
   }
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #262626;
+
+  ::-webkit-scrollbar-thumb {
+    background: #D4D4D8;
     border-radius: 9999px;
   }
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #404040;
+
+  .dark ::-webkit-scrollbar-thumb {
+    background: #262626;
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: #3F3F46;
   }
 }
