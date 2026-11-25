@@ -28,7 +28,7 @@ export const Sidebar = ({
 
   const mainNavigation = [
     {
-      to: '/',
+      to: '/dashboard',
       icon: LayoutDashboard,
       label: t('nav.dashboard', 'Dashboard'),
       end: true,

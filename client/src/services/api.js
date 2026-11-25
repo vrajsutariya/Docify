@@ -22,8 +22,23 @@ api.interceptors.request.use(
 
 // Response interceptor for consistent response formatting & error handling
 api.interceptors.response.use(
-  (response) => response.data,
+  (response) => {
+    // Return standard response structure
+    return response.data;
+  },
   (error) => {
+    // If 401 Unauthorized occurs on protected routes (not login/register)
+    if (error.response?.status === 401) {
+      const isAuthEndpoint =
+        error.config?.url?.includes('/auth/login') ||
+        error.config?.url?.includes('/auth/register');
+
+      if (!isAuthEndpoint) {
+        localStorage.removeItem('docify_token');
+        localStorage.removeItem('docify_user');
+      }
+    }
+
     const errorPayload = error.response?.data || {
       success: false,
       message: error.message || 'An unexpected network error occurred.',

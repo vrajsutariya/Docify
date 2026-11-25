@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Menu,
@@ -18,13 +18,16 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
 import { Dropdown } from '../common/Dropdown';
 
 export const Navbar = ({ onOpenMobileSidebar, onOpenSearch }) => {
   const { isDark, toggleTheme } = useTheme();
   const { currentLanguage, setLanguage, t, languages } = useLanguage();
+  const { user, logout } = useAuth();
   const [unreadCount, setUnreadCount] = useState(2);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const currentLangObj = languages.find((l) => l.code === currentLanguage) || languages[0];
 
@@ -59,14 +62,22 @@ export const Navbar = ({ onOpenMobileSidebar, onOpenSearch }) => {
 
   const profileDropdownItems = [
     {
+      id: 'user-info',
+      label: user?.name ? user.name : 'User Profile',
+      badge: user?.role === 'admin' ? 'Admin' : 'Pro',
+      disabled: true,
+    },
+    {
       id: 'profile',
       label: t('common.profile', 'Profile Settings'),
       icon: User,
+      onClick: () => navigate('/settings'),
     },
     {
       id: 'settings',
       label: t('nav.settings', 'Settings'),
       icon: Settings,
+      onClick: () => navigate('/settings'),
     },
     { divider: true },
     {
@@ -74,6 +85,10 @@ export const Navbar = ({ onOpenMobileSidebar, onOpenSearch }) => {
       label: t('common.logout', 'Log Out'),
       icon: LogOut,
       danger: true,
+      onClick: () => {
+        logout();
+        navigate('/login');
+      },
     },
   ];
 
@@ -91,7 +106,7 @@ export const Navbar = ({ onOpenMobileSidebar, onOpenSearch }) => {
             <Menu className="w-5 h-5" />
           </button>
 
-          <Link to="/" className="flex items-center gap-2.5 group">
+          <Link to="/dashboard" className="flex items-center gap-2.5 group">
             {/* Logo Icon with Cyan Accent Gradient */}
             <div className="w-9 h-9 rounded-xl bg-cyan-gradient flex items-center justify-center text-black font-heading font-extrabold text-lg shadow-sm group-hover:scale-105 transition-transform duration-200">
               D

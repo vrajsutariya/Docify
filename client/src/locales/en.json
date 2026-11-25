@@ -2,7 +2,13 @@
   "app": {
     "name": "Docify",
     "tagline": "AI-Powered Document & Data Intelligence",
-    "subtitle": "Next-Gen Document & Data AI Suite"
+    "subtitle": "Next-Gen Document & Data AI Suite",
+    "heroTitle": "Unlock Knowledge from Any Document or Data with AI",
+    "heroSubtitle": "Experience unified intelligence across documents and tabular data with natural language Q&A, automatic charts, 30+ precision utilities, and native support for English, Gujarati, and Hindi.",
+    "ctaGetStarted": "Get Started Free",
+    "ctaExploreTools": "Explore Tools",
+    "ctaSignIn": "Sign In",
+    "ctaDashboard": "Open Dashboard"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -12,7 +18,9 @@
     "history": "History",
     "favorites": "Favorites",
     "settings": "Settings",
-    "admin": "Admin Panel"
+    "admin": "Admin Panel",
+    "login": "Sign In",
+    "register": "Sign Up"
   },
   "common": {
     "search": "Search anything...",
@@ -42,5 +50,45 @@
     "documindDesc": "Document intelligence, OCR, abstraction, and page-cited RAG Q&A",
     "datainsightDesc": "Tabular data analytics, profiling, and smart chart recommendations",
     "smarttoolsDesc": "30+ high-performance PDF manipulation and media utilities"
+  },
+  "auth": {
+    "loginTitle": "Welcome Back",
+    "loginSubtitle": "Sign in to access your intelligent documents & analytics workspace",
+    "registerTitle": "Create Your Account",
+    "registerSubtitle": "Start unlocking document & data intelligence with AI in seconds",
+    "emailLabel": "Email Address",
+    "emailPlaceholder": "name@example.com",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "At least 6 characters",
+    "confirmPasswordLabel": "Confirm Password",
+    "confirmPasswordPlaceholder": "Re-enter your password",
+    "fullNameLabel": "Full Name",
+    "fullNamePlaceholder": "e.g. John Doe",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot password?",
+    "signInButton": "Sign In",
+    "signUpButton": "Create Free Account",
+    "alreadyHaveAccount": "Already have an account?",
+    "dontHaveAccount": "Don't have an account?",
+    "preferredLanguage": "Preferred Interface Language",
+    "passwordTooShort": "Password must be at least 6 characters",
+    "passwordsDoNotMatch": "Passwords do not match",
+    "loginSuccess": "Logged in successfully",
+    "registerSuccess": "Account created successfully"
+  },
+  "landing": {
+    "introducing": "Introducing Docify AI Suite",
+    "howItWorks": "How It Works",
+    "howItWorksSubtitle": "Turn complex documents and messy spreadsheets into actionable clarity in 3 intuitive steps",
+    "step1Title": "Step 1: Upload File",
+    "step1Desc": "Upload PDF, DOCX, TXT, scanned images, or tabular CSV/XLSX files.",
+    "step2Title": "Step 2: Choose AI Mode",
+    "step2Desc": "Select Summarize, Chat, AI Quiz, Auto-Clean, or Precision Conversion.",
+    "step3Title": "Step 3: Export & Share",
+    "step3Desc": "Instantly download cited summaries, interactive charts, or transformed files.",
+    "personasTitle": "Tailored for Every Workflow",
+    "personasSubtitle": "See how learners, educators, office professionals, and analysts elevate their work with Docify",
+    "multilingualTitle": "First-Class Multilingual Intelligence",
+    "multilingualSubtitle": "Work natively in English, Gujarati, and Hindi with high-fidelity OCR, script-aware layouts, and regional language RAG answers."
   }
 }
