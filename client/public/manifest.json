@@ -1,0 +1,15 @@
+{
+  "short_name": "Docify",
+  "name": "Docify - SmartDataAbstract AI",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#000000",
+  "theme_color": "#DC2626",
+  "display": "standalone"
+}

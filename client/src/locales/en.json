@@ -1,0 +1,11 @@
+{
+  "appName": "Docify",
+  "tagline": "SmartDataAbstract AI",
+  "common": {
+    "getStarted": "Get Started",
+    "upload": "Upload",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "loading": "Loading..."
+  }
+}

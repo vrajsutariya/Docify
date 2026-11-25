@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: #DC2626;
+    --color-primary-hover: #B91C1C;
+    --color-accent: #F97316;
+    --color-accent-hover: #EA580C;
+  }
+
+  body {
+    line-height: 1.6;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Multilingual line-height safety to avoid glyph ascender/descender clipping */
+  .font-gujarati,
+  :lang(gu) {
+    font-family: 'Noto Sans Gujarati', sans-serif;
+    line-height: 1.75 !important;
+  }
+
+  .font-devanagari,
+  :lang(hi) {
+    font-family: 'Noto Sans Devanagari', sans-serif;
+    line-height: 1.75 !important;
+  }
+}
+
+@layer utilities {
+  /* Scrollbar styles for dark mode */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #262626;
+    border-radius: 9999px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #404040;
+  }
+}
