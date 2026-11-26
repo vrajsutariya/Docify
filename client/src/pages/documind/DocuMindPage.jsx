@@ -34,6 +34,10 @@ import {
   RotateCcw,
   Printer,
   Share2,
+  GitBranch,
+  GitCompare,
+  BookMarked,
+  Highlighter,
 } from 'lucide-react';
 import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
@@ -45,6 +49,11 @@ import { QuizConfigModal } from '../../components/quiz/QuizConfigModal';
 import { QuizCard } from '../../components/quiz/QuizCard';
 import { ScoreBoard } from '../../components/quiz/ScoreBoard';
 import { FlashcardDeck } from '../../components/flashcards/FlashcardDeck';
+import { MindMapViewer } from '../../components/documind/MindMapViewer';
+import { StudyNotesViewer } from '../../components/documind/StudyNotesViewer';
+import { DocumentComparison } from '../../components/documind/DocumentComparison';
+import { CitationsTable } from '../../components/documind/CitationsTable';
+import { SalientHighlighter } from '../../components/documind/SalientHighlighter';
 import {
   getDocumentById,
   getUserDocuments,
@@ -55,6 +64,11 @@ import {
   getKeyInfo,
   getSentiment,
   translateSummary,
+  getMindMap,
+  getStudyNotes,
+  getCitations,
+  getHighlights,
+  compareDocuments,
 } from '../../services/documindService';
 import {
   generateQuiz,
@@ -114,6 +128,56 @@ export const DocuMindPage = () => {
   const [quizAttemptResult, setQuizAttemptResult] = useState(null);
   const [showQuizConfigModal, setShowQuizConfigModal] = useState(false);
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
+
+  // Citations & Highlights state
+  const [citationsList, setCitationsList] = useState([]);
+  const [loadingCitations, setLoadingCitations] = useState(false);
+  const [highlightsData, setHighlightsData] = useState(null);
+  const [loadingHighlights, setLoadingHighlights] = useState(false);
+
+  // Citations fetcher
+  const fetchCitationsData = useCallback(
+    async (force = false) => {
+      if (!docId) return;
+      setLoadingCitations(true);
+      try {
+        const res = await getCitations(docId, force);
+        setCitationsList(res?.data?.citations || []);
+      } catch (err) {
+        console.error('Error fetching citations:', err);
+      } finally {
+        setLoadingCitations(false);
+      }
+    },
+    [docId]
+  );
+
+  // Highlights fetcher
+  const fetchHighlightsData = useCallback(
+    async (threshold = 20) => {
+      if (!docId) return;
+      setLoadingHighlights(true);
+      try {
+        const res = await getHighlights(docId, threshold);
+        setHighlightsData(res?.data || null);
+      } catch (err) {
+        console.error('Error fetching highlights:', err);
+      } finally {
+        setLoadingHighlights(false);
+      }
+    },
+    [docId]
+  );
+
+  // Lazy load citations or highlights when user switches to those tabs
+  useEffect(() => {
+    if (activeTab === 'citations' && docId && citationsList.length === 0) {
+      fetchCitationsData();
+    }
+    if (activeTab === 'highlights' && docId && !highlightsData) {
+      fetchHighlightsData(20);
+    }
+  }, [activeTab, docId, citationsList.length, highlightsData, fetchCitationsData, fetchHighlightsData]);
 
   // Load all user documents for the selector dropdown
   useEffect(() => {
@@ -679,16 +743,21 @@ export const DocuMindPage = () => {
       {/* Main DocuMind Intelligence Interface */}
       {activeDoc && (
         <div className="space-y-6">
-          {/* Tab Navigation: [Summary] | [Chat (RAG)] | [AI Quiz] | [3D Flashcards] | [Key Info] | [Sentiment & Category] | [Translate] */}
+          {/* Tab Navigation: [Summary] | [Key Info] | [Chat] | [Quiz] | [Flashcards] | [Mind Map] | [Notes] | [Compare] | [Citations] | [Highlights] | [Sentiment] | [Translate] */}
           <div className="flex items-center gap-2 border-b border-light-border dark:border-dark-border overflow-x-auto pb-1">
             {[
-              { id: 'summary', label: '3-Level Summary', icon: Layers },
+              { id: 'summary', label: 'Summary', icon: Layers },
+              { id: 'keyInfo', label: 'Key Info', icon: Tag },
               { id: 'chat', label: 'Chat (RAG)', icon: MessageSquare },
-              { id: 'quiz', label: 'AI Quiz', icon: HelpCircle },
-              { id: 'flashcards', label: '3D Flashcards', icon: BookOpen },
-              { id: 'keyInfo', label: 'Key Information', icon: Tag },
-              { id: 'sentiment', label: 'Sentiment & Category', icon: Sparkles },
-              { id: 'translate', label: 'Multilingual Translate', icon: Languages },
+              { id: 'quiz', label: 'Quiz', icon: HelpCircle },
+              { id: 'flashcards', label: 'Flashcards', icon: BookOpen },
+              { id: 'mindmap', label: 'Mind Map', icon: GitBranch },
+              { id: 'notes', label: 'Exam Notes', icon: FileText },
+              { id: 'compare', label: 'Compare & Plagiarism', icon: GitCompare },
+              { id: 'citations', label: 'Citations', icon: BookMarked },
+              { id: 'highlights', label: 'Highlights', icon: Highlighter },
+              { id: 'sentiment', label: 'Sentiment', icon: Sparkles },
+              { id: 'translate', label: 'Translate', icon: Languages },
             ].map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -696,7 +765,7 @@ export const DocuMindPage = () => {
                 <button
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-3 border-b-2 font-heading text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                  className={`flex items-center gap-2 px-3.5 py-3 border-b-2 font-heading text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
                     isActive
                       ? 'border-brand-red text-brand-red dark:border-brand-redBright dark:text-brand-redBright'
                       : 'border-transparent text-light-body dark:text-dark-body hover:text-light-heading dark:hover:text-dark-heading hover:border-light-border dark:hover:border-dark-border'
@@ -710,7 +779,7 @@ export const DocuMindPage = () => {
           </div>
 
           {/* Action Toolbar for Active Tab (Copy, Download, TTS) */}
-          {!['chat', 'quiz', 'flashcards'].includes(activeTab) && (
+          {!['chat', 'quiz', 'flashcards', 'mindmap', 'notes', 'compare', 'citations', 'highlights'].includes(activeTab) && (
             <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-light-surface/60 dark:bg-dark-surface/60 border border-light-border dark:border-dark-border">
               <span className="text-xs text-light-body dark:text-dark-body font-medium flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-brand-orange" />
@@ -1489,6 +1558,84 @@ export const DocuMindPage = () => {
                   </p>
                 </div>
               )}
+            </motion.div>
+          )}
+
+          {/* TAB CONTENT 5: VISUAL MIND MAP GENERATOR (Item 8) */}
+          {activeTab === 'mindmap' && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-6"
+            >
+              <MindMapViewer
+                documentId={docId}
+                documentTitle={activeDoc?.originalName}
+                onFetchMindMap={getMindMap}
+              />
+            </motion.div>
+          )}
+
+          {/* TAB CONTENT 6: EXAM-READY STUDY NOTES (Item 9) */}
+          {activeTab === 'notes' && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-6"
+            >
+              <StudyNotesViewer
+                documentId={docId}
+                documentTitle={activeDoc?.originalName}
+                onFetchNotes={getStudyNotes}
+              />
+            </motion.div>
+          )}
+
+          {/* TAB CONTENT 7: SIDE-BY-SIDE COMPARE & PLAGIARISM CHECKER (Items 12 & 15) */}
+          {activeTab === 'compare' && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-6"
+            >
+              <DocumentComparison
+                userDocuments={userDocs}
+                activeDocId={docId}
+                onCompare={compareDocuments}
+              />
+            </motion.div>
+          )}
+
+          {/* TAB CONTENT 8: CITATION & REFERENCE EXTRACTOR (Item 13) */}
+          {activeTab === 'citations' && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-6"
+            >
+              <CitationsTable
+                citations={citationsList}
+                loading={loadingCitations}
+                onRefresh={() => fetchCitationsData(true)}
+                documentTitle={activeDoc?.originalName}
+              />
+            </motion.div>
+          )}
+
+          {/* TAB CONTENT 9: IMPORTANT SENTENCES HIGHLIGHTER (Item 14) */}
+          {activeTab === 'highlights' && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-6"
+            >
+              <SalientHighlighter
+                rawText={activeDoc?.extractedText || ''}
+                salientSentences={highlightsData?.salientSentences || []}
+                topPercent={highlightsData?.topPercent || 20}
+                onThresholdChange={(th) => fetchHighlightsData(th)}
+                loading={loadingHighlights}
+              />
             </motion.div>
           )}
         </div>

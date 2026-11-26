@@ -8,6 +8,11 @@ import {
   extractKeyInfo,
   detectSentimentAndCategory,
   translateContent,
+  generateMindMap,
+  generateStudyNotes,
+  extractCitations,
+  highlightSalientSentences,
+  checkSimilarity,
 } from '../services/aiService.js';
 import { successResponse, errorResponse } from '../utils/responseWrapper.js';
 
@@ -342,9 +347,275 @@ export const translateDocSummary = async (req, res) => {
   }
 };
 
+/**
+ * Mind Map Visualizer Controller
+ * GET /api/documents/:id/mindmap
+ */
+export const getMindMap = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { language = 'en', forceRefresh = 'false' } = req.query;
+    const shouldRefresh = forceRefresh === 'true';
+    const userId = (req.user?.id || req.user?._id || req.currentUser?._id)?.toString();
+
+    const document = await getAuthorizedDocument(id, userId, req.user?.role);
+
+    // Check cached mindmap
+    if (!shouldRefresh) {
+      const existingSummary = await Summary.findOne({ documentId: id, language });
+      if (existingSummary?.mindMap && existingSummary.mindMap.label) {
+        return successResponse(
+          res,
+          { mindMap: existingSummary.mindMap, language, cached: true },
+          'Mind map retrieved from cache'
+        );
+      }
+    }
+
+    const text = document.extractedText || document.originalName;
+    const mindMap = await generateMindMap(text, language);
+
+    // Upsert into summary
+    await Summary.findOneAndUpdate(
+      { documentId: id, language },
+      {
+        $set: {
+          documentId: id,
+          userId,
+          mindMap,
+          language,
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    return successResponse(
+      res,
+      { mindMap, language, cached: false },
+      'Visual mind map generated successfully'
+    );
+  } catch (error) {
+    console.error('[documentAiController] getMindMap error:', error);
+    return errorResponse(
+      res,
+      error.message || 'Failed to generate visual mind map',
+      error.statusCode || 500,
+      error
+    );
+  }
+};
+
+/**
+ * Exam Study Notes Controller
+ * GET /api/documents/:id/notes
+ */
+export const getStudyNotes = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { language = 'en', forceRefresh = 'false' } = req.query;
+    const shouldRefresh = forceRefresh === 'true';
+    const userId = (req.user?.id || req.user?._id || req.currentUser?._id)?.toString();
+
+    const document = await getAuthorizedDocument(id, userId, req.user?.role);
+
+    if (!shouldRefresh) {
+      const existingSummary = await Summary.findOne({ documentId: id, language });
+      if (existingSummary?.studyNotes && existingSummary.studyNotes.length > 50) {
+        return successResponse(
+          res,
+          { studyNotes: existingSummary.studyNotes, language, cached: true },
+          'Study notes retrieved from cache'
+        );
+      }
+    }
+
+    const text = document.extractedText || document.originalName;
+    const studyNotes = await generateStudyNotes(text, language);
+
+    await Summary.findOneAndUpdate(
+      { documentId: id, language },
+      {
+        $set: {
+          documentId: id,
+          userId,
+          studyNotes,
+          language,
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    return successResponse(
+      res,
+      { studyNotes, language, cached: false },
+      'Exam study notes generated successfully'
+    );
+  } catch (error) {
+    console.error('[documentAiController] getStudyNotes error:', error);
+    return errorResponse(
+      res,
+      error.message || 'Failed to generate exam study notes',
+      error.statusCode || 500,
+      error
+    );
+  }
+};
+
+/**
+ * Citation & Reference Extractor Controller
+ * GET /api/documents/:id/citations
+ */
+export const getCitations = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { forceRefresh = 'false' } = req.query;
+    const shouldRefresh = forceRefresh === 'true';
+    const userId = (req.user?.id || req.user?._id || req.currentUser?._id)?.toString();
+
+    const document = await getAuthorizedDocument(id, userId, req.user?.role);
+
+    if (!shouldRefresh) {
+      const existingSummary = await Summary.findOne({ documentId: id });
+      if (existingSummary?.citations && existingSummary.citations.length > 0) {
+        return successResponse(
+          res,
+          { citations: existingSummary.citations, count: existingSummary.citations.length, cached: true },
+          'Citations retrieved from cache'
+        );
+      }
+    }
+
+    const text = document.extractedText || document.originalName;
+    const citations = await extractCitations(text);
+
+    // Save to summary
+    await Summary.findOneAndUpdate(
+      { documentId: id },
+      { $set: { citations } },
+      { upsert: false }
+    );
+
+    return successResponse(
+      res,
+      { citations, count: citations.length, cached: false },
+      'Citations extracted successfully'
+    );
+  } catch (error) {
+    console.error('[documentAiController] getCitations error:', error);
+    return errorResponse(
+      res,
+      error.message || 'Failed to extract citations',
+      error.statusCode || 500,
+      error
+    );
+  }
+};
+
+/**
+ * Salient Sentences Highlighter Controller
+ * GET /api/documents/:id/highlights
+ */
+export const getHighlights = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { threshold = 20 } = req.query;
+    const userId = (req.user?.id || req.user?._id || req.currentUser?._id)?.toString();
+
+    const document = await getAuthorizedDocument(id, userId, req.user?.role);
+    const text = document.extractedText || document.originalName;
+
+    const highlights = await highlightSalientSentences(text, Number(threshold) || 20);
+
+    return successResponse(
+      res,
+      highlights,
+      'Salient sentences highlighted successfully'
+    );
+  } catch (error) {
+    console.error('[documentAiController] getHighlights error:', error);
+    return errorResponse(
+      res,
+      error.message || 'Failed to compute sentence highlights',
+      error.statusCode || 500,
+      error
+    );
+  }
+};
+
+/**
+ * Side-by-Side Document Comparison & Plagiarism Checker
+ * POST /api/documents/compare
+ */
+export const compareDocuments = async (req, res) => {
+  try {
+    const { docIdA, docIdB, textA: customTextA, textB: customTextB } = req.body;
+    const userId = (req.user?.id || req.user?._id || req.currentUser?._id)?.toString();
+
+    let textA = customTextA || '';
+    let textB = customTextB || '';
+    let metaA = { id: docIdA, name: 'Document A' };
+    let metaB = { id: docIdB, name: 'Document B' };
+
+    if (docIdA) {
+      const docA = await getAuthorizedDocument(docIdA, userId, req.user?.role);
+      textA = docA.extractedText || docA.originalName;
+      metaA = {
+        id: docA._id,
+        name: docA.originalName,
+        pageCount: docA.pageCount,
+        fileType: docA.fileType,
+      };
+    }
+
+    if (docIdB) {
+      const docB = await getAuthorizedDocument(docIdB, userId, req.user?.role);
+      textB = docB.extractedText || docB.originalName;
+      metaB = {
+        id: docB._id,
+        name: docB.originalName,
+        pageCount: docB.pageCount,
+        fileType: docB.fileType,
+      };
+    }
+
+    if (!textA || !textB) {
+      return errorResponse(
+        res,
+        'Both documents or text inputs are required for comparison',
+        400
+      );
+    }
+
+    const comparisonResult = await checkSimilarity(textA, textB);
+
+    return successResponse(
+      res,
+      {
+        docA: metaA,
+        docB: metaB,
+        ...comparisonResult,
+      },
+      'Document comparison and similarity calculation completed successfully'
+    );
+  } catch (error) {
+    console.error('[documentAiController] compareDocuments error:', error);
+    return errorResponse(
+      res,
+      error.message || 'Failed to compare documents',
+      error.statusCode || 500,
+      error
+    );
+  }
+};
+
 export default {
   getOrGenerateSummary,
   getKeyInfo,
   getSentimentAndCategory,
   translateDocSummary,
+  getMindMap,
+  getStudyNotes,
+  getCitations,
+  getHighlights,
+  compareDocuments,
 };

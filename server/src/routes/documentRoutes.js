@@ -12,6 +12,11 @@ import {
   getKeyInfo,
   getSentimentAndCategory,
   translateDocSummary,
+  getMindMap,
+  getStudyNotes,
+  getCitations,
+  getHighlights,
+  compareDocuments,
 } from '../controllers/documentAiController.js';
 import { askQuestion } from '../controllers/chatController.js';
 
@@ -27,11 +32,14 @@ router.get('/user', requireAuth, getUserDocuments);
 // Document Chat (RAG Engine with Page Citations & Multi-Doc Chat)
 router.post('/chat', requireAuth, askQuestion);
 
+// Compare Two Documents Side-by-Side & Plagiarism Check (Prompt 9)
+router.post('/compare', requireAuth, compareDocuments);
+
 // Single document retrieval & deletion
 router.get('/:id', requireAuth, getDocumentById);
 router.delete('/:id', requireAuth, deleteDocument);
 
-// --- DocuMind AI Intelligence Endpoints (Prompt 6) ---
+// --- DocuMind AI Intelligence Endpoints ---
 // 3-Level Abstraction Summary
 router.post('/:id/summarize', requireAuth, getOrGenerateSummary);
 
@@ -43,5 +51,18 @@ router.get('/:id/sentiment', requireAuth, getSentimentAndCategory);
 
 // Multilingual Summary Translation (en, gu, hi)
 router.post('/:id/translate', requireAuth, translateDocSummary);
+
+// --- Prompt 9 Research & Study Endpoints ---
+// Visual Mind Map Generator (Item 8)
+router.get('/:id/mindmap', requireAuth, getMindMap);
+
+// Exam-Ready Study Notes & Bullet Notes (Item 9)
+router.get('/:id/notes', requireAuth, getStudyNotes);
+
+// Citation & Reference Extractor (Item 13)
+router.get('/:id/citations', requireAuth, getCitations);
+
+// Important Sentences Highlighter (Item 14)
+router.get('/:id/highlights', requireAuth, getHighlights);
 
 export default router;

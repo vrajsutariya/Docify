@@ -48,9 +48,76 @@ export const translateSummary = async (docId, targetLang = 'gu', forceRefresh = 
   });
 };
 
+/**
+ * Fetch visual mind map tree
+ * @param {string} docId
+ * @param {'en' | 'gu' | 'hi'} [language='en']
+ * @param {boolean} [forceRefresh=false]
+ */
+export const getMindMap = async (docId, language = 'en', forceRefresh = false) => {
+  return await api.get(`/documents/${docId}/mindmap`, {
+    params: { language, forceRefresh },
+  });
+};
+
+/**
+ * Fetch exam-ready study notes
+ * @param {string} docId
+ * @param {'en' | 'gu' | 'hi'} [language='en']
+ * @param {boolean} [forceRefresh=false]
+ */
+export const getStudyNotes = async (docId, language = 'en', forceRefresh = false) => {
+  return await api.get(`/documents/${docId}/notes`, {
+    params: { language, forceRefresh },
+  });
+};
+
+/**
+ * Fetch extracted citations and references
+ * @param {string} docId
+ * @param {boolean} [forceRefresh=false]
+ */
+export const getCitations = async (docId, forceRefresh = false) => {
+  return await api.get(`/documents/${docId}/citations`, {
+    params: { forceRefresh },
+  });
+};
+
+/**
+ * Fetch salient highlighted sentences
+ * @param {string} docId
+ * @param {number} [threshold=20]
+ */
+export const getHighlights = async (docId, threshold = 20) => {
+  return await api.get(`/documents/${docId}/highlights`, {
+    params: { threshold },
+  });
+};
+
+/**
+ * Compare two documents side-by-side or calculate similarity / plagiarism
+ * @param {string} [docIdA]
+ * @param {string} [docIdB]
+ * @param {string} [textA]
+ * @param {string} [textB]
+ */
+export const compareDocuments = async (docIdA, docIdB, textA, textB) => {
+  return await api.post('/documents/compare', {
+    docIdA,
+    docIdB,
+    textA,
+    textB,
+  });
+};
+
 export default {
   getSummary,
   getKeyInfo,
   getSentiment,
   translateSummary,
+  getMindMap,
+  getStudyNotes,
+  getCitations,
+  getHighlights,
+  compareDocuments,
 };

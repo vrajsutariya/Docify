@@ -107,6 +107,37 @@ const summarySchema = new mongoose.Schema(
       of: translationItemSchema,
       default: () => new Map(),
     },
+    mindMap: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    studyNotes: {
+      type: String,
+      default: '',
+    },
+    citations: {
+      type: [
+        {
+          raw: { type: String, default: '' },
+          authors: { type: [String], default: [] },
+          title: { type: String, default: '' },
+          year: { type: String, default: '' },
+          type: { type: String, default: 'other' },
+          url: { type: String, default: '' },
+        },
+      ],
+      default: [],
+    },
+    highlights: {
+      type: [
+        {
+          sentence: { type: String, default: '' },
+          score: { type: Number, default: 0 },
+          index: { type: Number, default: 0 },
+        },
+      ],
+      default: [],
+    },
   },
   {
     timestamps: true,
