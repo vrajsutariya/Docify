@@ -9,7 +9,8 @@ import { Login } from '../pages/Login';
 import { Register } from '../pages/Register';
 
 // Protected Dashboard & Module Pages
-import { HomePage as Dashboard } from '../pages/HomePage';
+import { Dashboard } from '../pages/Dashboard';
+import { HomePage } from '../pages/HomePage';
 import { DocuMindPage } from '../pages/documind/DocuMindPage';
 import { DataInsightPage } from '../pages/datainsight/DataInsightPage';
 import { SmartToolsPage } from '../pages/smarttools/SmartToolsPage';
@@ -35,6 +36,7 @@ export const AppRoutes = () => {
         }
       >
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/home" element={<HomePage />} />
         <Route path="/documind/*" element={<DocuMindPage />} />
         <Route path="/datainsight/*" element={<DataInsightPage />} />
         <Route path="/smarttools/*" element={<SmartToolsPage />} />

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
   FileText,
@@ -34,9 +34,15 @@ import { Card } from '../components/common/Card';
 import { Dropdown } from '../components/common/Dropdown';
 
 export const Landing = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, guestLogin } = useAuth();
   const { t, currentLanguage, setLanguage, languages } = useLanguage();
   const { isDark, toggleTheme } = useTheme();
+  const navigate = useNavigate();
+
+  const handleGuestExplore = async () => {
+    await guestLogin();
+    navigate('/dashboard');
+  };
 
   const currentLangObj = languages.find((l) => l.code === currentLanguage) || languages[0];
 
@@ -239,6 +245,15 @@ export const Landing = () => {
               </Link>
             ) : (
               <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGuestExplore}
+                  leftIcon={Sparkles}
+                  className="hidden sm:inline-flex border-accent/40 text-accent-dark dark:text-accent-light"
+                >
+                  Explore as Guest
+                </Button>
                 <Link to="/login">
                   <Button variant="ghost" size="sm">
                     {t('app.ctaSignIn', 'Sign In')}
@@ -298,6 +313,15 @@ export const Landing = () => {
                   {t('app.ctaGetStarted', 'Get Started Free')}
                 </Button>
               </Link>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={handleGuestExplore}
+                leftIcon={Sparkles}
+                className="border-accent/40 hover:border-accent text-accent-dark dark:text-accent-light bg-accent/5 hover:bg-accent/10"
+              >
+                Explore Without Login
+              </Button>
               <a href="#modules">
                 <Button variant="secondary" size="lg">
                   {t('app.ctaExploreTools', 'Explore Tools')}

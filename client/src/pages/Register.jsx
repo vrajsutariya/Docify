@@ -32,8 +32,9 @@ export const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGuestSubmitting, setIsGuestSubmitting] = useState(false);
 
-  const { register } = useAuth();
+  const { register, guestLogin } = useAuth();
   const { t, currentLanguage, setLanguage, languages } = useLanguage();
   const { isDark, toggleTheme, theme } = useTheme();
   const navigate = useNavigate();
@@ -99,6 +100,13 @@ export const Register = () => {
     } else {
       setErrorMessage(result.message || 'Registration failed.');
     }
+  };
+
+  const handleGuestExplore = async () => {
+    setIsGuestSubmitting(true);
+    await guestLogin();
+    setIsGuestSubmitting(false);
+    navigate('/dashboard');
   };
 
   return (
@@ -313,6 +321,28 @@ export const Register = () => {
                 rightIcon={ArrowRight}
               >
                 {t('auth.signUpButton', 'Create Free Account')}
+              </Button>
+
+              {/* Divider */}
+              <div className="relative flex py-1 items-center">
+                <div className="flex-grow border-t border-light-border dark:border-dark-border"></div>
+                <span className="flex-shrink mx-3 text-[11px] text-light-body/70 dark:text-dark-body/70 uppercase font-mono tracking-wider">
+                  {t('auth.orDivider', 'Or explore first')}
+                </span>
+                <div className="flex-grow border-t border-light-border dark:border-dark-border"></div>
+              </div>
+
+              {/* Guest / Demo Access Button */}
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                onClick={handleGuestExplore}
+                isLoading={isGuestSubmitting}
+                className="w-full border-dashed border-accent/40 hover:border-accent text-accent-dark dark:text-accent-light bg-accent/5 hover:bg-accent/10"
+                leftIcon={Sparkles}
+              >
+                {t('auth.guestButton', 'Explore as Guest (No Login Required)')}
               </Button>
             </form>
 

@@ -58,6 +58,11 @@
     transform: translateY(0) scale(0.99);
   }
 
+  /* Global Button Hover Fill with Cyan */
+  button:hover:not([disabled]) {
+    transition: all 200ms ease;
+  }
+
   .card-surface {
     background-color: #F4F4F5;
     border: 1px solid #E4E4E7;

@@ -111,6 +111,43 @@ export const login = async (req, res) => {
 };
 
 /**
+ * @route   POST /api/auth/guest
+ * @desc    Generate guest session token with temporary user profile
+ * @access  Public
+ */
+export const guestLogin = async (req, res) => {
+  try {
+    const guestEmail = 'guest@docify.demo';
+    let user = await User.findOne({ email: guestEmail });
+
+    if (!user) {
+      user = await User.create({
+        name: 'Guest Explorer',
+        email: guestEmail,
+        password: 'GuestPassword123!',
+        role: 'user',
+        preferredLanguage: 'en',
+        theme: 'dark',
+      });
+    }
+
+    const token = generateToken(user);
+
+    return successResponse(
+      res,
+      {
+        user: user.toJSON(),
+        token,
+      },
+      'Guest session established successfully'
+    );
+  } catch (error) {
+    console.error('[Auth GuestLogin Error]:', error);
+    return errorResponse(res, error.message || 'Guest session initialization failed', 500, error);
+  }
+};
+
+/**
  * @route   GET /api/auth/me
  * @desc    Get currently logged-in user profile
  * @access  Protected

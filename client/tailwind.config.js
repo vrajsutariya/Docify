@@ -21,7 +21,9 @@ export default {
           cyanLight: '#22D3EE',
           cyanDark: '#0E7490',
           red: '#DC2626',
+          redBright: '#EF4444',
           orange: '#F97316',
+          orangeBright: '#FB923C',
         },
         status: {
           success: '#22C55E',
@@ -52,6 +54,7 @@ export default {
       backgroundImage: {
         'brand-gradient': 'linear-gradient(135deg, #06B6D4 0%, #0E7490 100%)',
         'cyan-gradient': 'linear-gradient(135deg, #22D3EE 0%, #06B6D4 100%)',
+        'upload-gradient': 'linear-gradient(90deg, #DC2626 0%, #F97316 100%)',
       },
       borderRadius: {
         'xl': '12px',
@@ -65,6 +68,23 @@ export default {
         'soft-dark': '0 4px 20px -2px rgba(0, 0, 0, 0.6)',
         'glow-cyan': '0 0 15px -3px rgba(6, 182, 212, 0.4)',
         'glow-cyan-dark': '0 0 15px -3px rgba(34, 211, 238, 0.4)',
+        'glow-red': '0 0 20px 2px rgba(220, 38, 38, 0.35)',
+        'glow-red-bright': '0 0 25px 4px rgba(239, 68, 68, 0.45)',
+      },
+      keyframes: {
+        'pulse-glow': {
+          '0%, 100%': {
+            boxShadow: '0 0 15px 2px rgba(220, 38, 38, 0.3)',
+            borderColor: '#DC2626',
+          },
+          '50%': {
+            boxShadow: '0 0 30px 6px rgba(239, 68, 68, 0.6)',
+            borderColor: '#EF4444',
+          },
+        },
+      },
+      animation: {
+        'pulse-glow': 'pulse-glow 1.8s infinite ease-in-out',
       },
     },
   },

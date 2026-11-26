@@ -18,6 +18,32 @@ export const authService = {
   },
 
   /**
+   * Initialize guest session without credentials
+   */
+  async guestLogin() {
+    try {
+      const response = await api.post('/auth/guest');
+      return response;
+    } catch (err) {
+      console.warn('[authService] Guest API endpoint unavailable, using offline guest session', err);
+      return {
+        success: true,
+        data: {
+          user: {
+            _id: 'guest_demo_user',
+            name: 'Guest Explorer',
+            email: 'guest@docify.demo',
+            role: 'user',
+            preferredLanguage: 'en',
+            theme: 'dark',
+          },
+          token: 'guest_demo_token_' + Date.now(),
+        },
+      };
+    }
+  },
+
+  /**
    * Get current authenticated user profile
    */
   async getMe() {

@@ -31,17 +31,26 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       const isAuthEndpoint =
         error.config?.url?.includes('/auth/login') ||
-        error.config?.url?.includes('/auth/register');
+        error.config?.url?.includes('/auth/register') ||
+        error.config?.url?.includes('/auth/guest');
 
-      if (!isAuthEndpoint) {
+      const token = localStorage.getItem('docify_token');
+      const isGuestToken = token?.startsWith('guest_demo_token');
+
+      if (!isAuthEndpoint && !isGuestToken) {
         localStorage.removeItem('docify_token');
         localStorage.removeItem('docify_user');
       }
     }
 
+    let message = error.response?.data?.message || error.message || 'An unexpected error occurred.';
+    if (error.code === 'ERR_NETWORK' || message === 'Network Error') {
+      message = 'Backend API server unreachable (http://localhost:5000). Please ensure server is running.';
+    }
+
     const errorPayload = error.response?.data || {
       success: false,
-      message: error.message || 'An unexpected network error occurred.',
+      message,
     };
     return Promise.reject(errorPayload);
   }

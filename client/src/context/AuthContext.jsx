@@ -29,6 +29,18 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
+      // If it's an offline guest demo token, keep existing guest session without calling /me
+      if (savedToken.startsWith('guest_demo_token')) {
+        try {
+          const stored = localStorage.getItem('docify_user');
+          if (stored) {
+            setUser(JSON.parse(stored));
+          }
+        } catch {}
+        setIsLoading(false);
+        return;
+      }
+
       try {
         const res = await authService.getMe();
         if (res?.data?.user) {
@@ -44,10 +56,22 @@ export const AuthProvider = ({ children }) => {
           }
         }
       } catch (err) {
-        console.warn('[AuthContext] Session expired or invalid token:', err?.message);
-        authService.logout();
-        setUser(null);
-        setToken(null);
+        console.warn('[AuthContext] Session verification note:', err?.message);
+        // Don't violently boot if offline; check if stored user exists
+        const storedUser = localStorage.getItem('docify_user');
+        if (storedUser) {
+          try {
+            setUser(JSON.parse(storedUser));
+          } catch {
+            authService.logout();
+            setUser(null);
+            setToken(null);
+          }
+        } else {
+          authService.logout();
+          setUser(null);
+          setToken(null);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -113,6 +137,46 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const guestLogin = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await authService.guestLogin();
+      const userData = res.data?.user || {
+        _id: 'guest_demo_user',
+        name: 'Guest Explorer',
+        email: 'guest@docify.demo',
+        role: 'user',
+        preferredLanguage: 'en',
+        theme: 'dark',
+      };
+      const userToken = res.data?.token || 'guest_demo_token_' + Date.now();
+
+      setUser(userData);
+      setToken(userToken);
+      localStorage.setItem('docify_token', userToken);
+      localStorage.setItem('docify_user', JSON.stringify(userData));
+
+      return { success: true, user: userData };
+    } catch {
+      const fallbackUser = {
+        _id: 'guest_demo_user',
+        name: 'Guest Explorer',
+        email: 'guest@docify.demo',
+        role: 'user',
+        preferredLanguage: 'en',
+        theme: 'dark',
+      };
+      const fallbackToken = 'guest_demo_token_' + Date.now();
+      setUser(fallbackUser);
+      setToken(fallbackToken);
+      localStorage.setItem('docify_token', fallbackToken);
+      localStorage.setItem('docify_user', JSON.stringify(fallbackUser));
+      return { success: true, user: fallbackUser };
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const logout = useCallback(() => {
     authService.logout();
     setUser(null);
@@ -133,6 +197,7 @@ export const AuthProvider = ({ children }) => {
         isLoading,
         login,
         register,
+        guestLogin,
         logout,
         updateUser,
       }}

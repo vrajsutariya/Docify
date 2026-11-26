@@ -74,7 +74,9 @@
     "passwordTooShort": "Password must be at least 6 characters",
     "passwordsDoNotMatch": "Passwords do not match",
     "loginSuccess": "Logged in successfully",
-    "registerSuccess": "Account created successfully"
+    "registerSuccess": "Account created successfully",
+    "orDivider": "Or explore first",
+    "guestButton": "Explore as Guest (No Login Required)"
   },
   "landing": {
     "introducing": "Introducing Docify AI Suite",

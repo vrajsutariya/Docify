@@ -1,11 +1,15 @@
 import { Router } from 'express';
 import { successResponse } from '../utils/responseWrapper.js';
 import authRoutes from './authRoutes.js';
+import documentRoutes from './documentRoutes.js';
 
 const router = Router();
 
 // Mount Auth Sub-router
 router.use('/auth', authRoutes);
+
+// Mount Document Sub-router
+router.use('/documents', documentRoutes);
 
 // Root API Health & Meta
 router.get('/health', (req, res) => {

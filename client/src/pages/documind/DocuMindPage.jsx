@@ -1,88 +1,1074 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
+import {
+  FileText,
+  Sparkles,
+  BookOpen,
+  Clock,
+  Languages,
+  CheckCircle2,
+  AlertTriangle,
+  Info,
+  Copy,
+  Check,
+  Download,
+  Volume2,
+  VolumeX,
+  RefreshCw,
+  Layers,
+  Users,
+  Building2,
+  Calendar,
+  TrendingUp,
+  Tag,
+  ArrowLeft,
+  FileUp,
+  ChevronDown,
+  ShieldAlert,
+  Search,
+} from 'lucide-react';
 import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
-import { FileUp, MessageSquare, BookOpen, Brain, Layers, ArrowRight } from 'lucide-react';
+import { Skeleton } from '../../components/common/Skeleton';
+import { DropZone } from '../../components/upload/DropZone';
+import {
+  getDocumentById,
+  getUserDocuments,
+  formatBytes,
+} from '../../services/documentService';
+import {
+  getSummary,
+  getKeyInfo,
+  getSentiment,
+  translateSummary,
+} from '../../services/documindService';
 import { useLanguage } from '../../context/LanguageContext';
 
 export const DocuMindPage = () => {
   const { t } = useLanguage();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const docId = searchParams.get('docId');
+
+  // Documents list & selector state
+  const [userDocs, setUserDocs] = useState([]);
+  const [activeDoc, setActiveDoc] = useState(null);
+  const [loadingDoc, setLoadingDoc] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+
+  // Active Tab: 'summary' | 'keyInfo' | 'sentiment' | 'translate'
+  const [activeTab, setActiveTab] = useState('summary');
+
+  // Abstraction Depth: 'short' | 'medium' | 'detailed'
+  const [abstractionDepth, setAbstractionDepth] = useState('short');
+
+  // Active Summary Data
+  const [summaryData, setSummaryData] = useState(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+
+  // Active Key Info Data
+  const [keyInfoData, setKeyInfoData] = useState(null);
+  const [loadingKeyInfo, setLoadingKeyInfo] = useState(false);
+
+  // Active Sentiment Data
+  const [sentimentData, setSentimentData] = useState(null);
+  const [loadingSentiment, setLoadingSentiment] = useState(false);
+
+  // Active Translation Data
+  const [targetTranslationLang, setTargetTranslationLang] = useState('gu');
+  const [translationResult, setTranslationResult] = useState(null);
+  const [translating, setTranslating] = useState(false);
+
+  // UI helpers
+  const [copied, setCopied] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null);
+
+  // Load all user documents for the selector dropdown
+  useEffect(() => {
+    getUserDocuments({ limit: 50 })
+      .then((res) => {
+        const docs = res?.data?.documents || [];
+        setUserDocs(docs);
+        // If no docId in URL but user has documents, select the latest one automatically
+        if (!docId && docs.length > 0) {
+          setSearchParams({ docId: docs[0]._id });
+        }
+      })
+      .catch((err) => console.error('Error fetching user documents:', err));
+  }, [docId, setSearchParams]);
+
+  // Load active document details when docId changes
+  useEffect(() => {
+    if (!docId) {
+      setActiveDoc(null);
+      setSummaryData(null);
+      return;
+    }
+
+    setLoadingDoc(true);
+    setErrorMessage(null);
+    getDocumentById(docId)
+      .then((res) => {
+        setActiveDoc(res?.data || null);
+      })
+      .catch((err) => {
+        console.error('Error loading document:', err);
+        setErrorMessage('Unable to load document details.');
+      })
+      .finally(() => {
+        setLoadingDoc(false);
+      });
+  }, [docId]);
+
+  // Fetch or generate summary
+  const fetchSummary = useCallback(
+    async (forceRefresh = false) => {
+      if (!docId) return;
+      setLoadingSummary(true);
+      setErrorMessage(null);
+      try {
+        const res = await getSummary(docId, 'all', 'en', forceRefresh);
+        const data = res?.data || null;
+        setSummaryData(data);
+        if (data?.keyInfo) setKeyInfoData(data.keyInfo);
+        if (data?.sentiment) {
+          setSentimentData({
+            sentiment: data.sentiment,
+            category: data.category,
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching summary:', err);
+        setErrorMessage(err.message || 'Failed to generate 3-level abstraction summary.');
+      } finally {
+        setLoadingSummary(false);
+      }
+    },
+    [docId]
+  );
+
+  // Fetch key info
+  const fetchKeyInfo = useCallback(async () => {
+    if (!docId) return;
+    setLoadingKeyInfo(true);
+    try {
+      const res = await getKeyInfo(docId);
+      setKeyInfoData(res?.data || null);
+    } catch (err) {
+      console.error('Error fetching key info:', err);
+    } finally {
+      setLoadingKeyInfo(false);
+    }
+  }, [docId]);
+
+  // Fetch sentiment
+  const fetchSentiment = useCallback(async () => {
+    if (!docId) return;
+    setLoadingSentiment(true);
+    try {
+      const res = await getSentiment(docId);
+      setSentimentData(res?.data || null);
+    } catch (err) {
+      console.error('Error fetching sentiment:', err);
+    } finally {
+      setLoadingSentiment(false);
+    }
+  }, [docId]);
+
+  // Trigger summary generation on initial document load
+  useEffect(() => {
+    if (activeDoc) {
+      fetchSummary();
+    }
+  }, [activeDoc, fetchSummary]);
+
+  // Handle Tab Change
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'keyInfo' && !keyInfoData) {
+      fetchKeyInfo();
+    } else if (tab === 'sentiment' && !sentimentData) {
+      fetchSentiment();
+    }
+  };
+
+  // Handle Translation
+  const handleTranslate = async (lang = targetTranslationLang) => {
+    if (!docId) return;
+    setTranslating(true);
+    setTargetTranslationLang(lang);
+    try {
+      const res = await translateSummary(docId, lang);
+      setTranslationResult(res?.data || null);
+    } catch (err) {
+      console.error('Translation error:', err);
+      setErrorMessage('Failed to translate summary.');
+    } finally {
+      setTranslating(false);
+    }
+  };
+
+  // Active Summary Text depending on abstraction depth
+  const activeSummaryText = useMemo(() => {
+    if (!summaryData) return '';
+    if (abstractionDepth === 'short') return summaryData.shortSummary || '';
+    if (abstractionDepth === 'medium') {
+      return (summaryData.mediumSummary || []).join('\n• ');
+    }
+    return summaryData.detailedSummary || '';
+  }, [summaryData, abstractionDepth]);
+
+  // Copy to clipboard
+  const handleCopy = () => {
+    const textToCopy =
+      activeTab === 'translate' && translationResult
+        ? `${translationResult.short}\n\n${(translationResult.medium || []).join('\n• ')}\n\n${translationResult.detailed}`
+        : activeSummaryText || activeDoc?.extractedText || '';
+
+    if (textToCopy) {
+      navigator.clipboard.writeText(textToCopy);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  // Download content as Markdown or Text
+  const handleDownload = (format = 'md') => {
+    const title = activeDoc?.originalName ? activeDoc.originalName.replace(/\.[^/.]+$/, '') : 'documind-analysis';
+    const content =
+      `# ${activeDoc?.originalName || 'Document Analysis'}\n\n` +
+      `**Generated by Docify DocuMind AI Engine**\n\n` +
+      `## Short Summary\n${summaryData?.shortSummary || ''}\n\n` +
+      `## Key Takeaways\n${(summaryData?.mediumSummary || []).map((m) => `- ${m}`).join('\n')}\n\n` +
+      `## Detailed Breakdown\n${summaryData?.detailedSummary || ''}\n\n` +
+      `## Sentiment & Domain\nTone: ${summaryData?.sentiment?.label || 'Neutral'} (${Math.round((summaryData?.sentiment?.score || 0.7) * 100)}%)\n` +
+      `Category: ${summaryData?.category?.name || 'General'}\n`;
+
+    const blob = new Blob([content], { type: format === 'md' ? 'text/markdown' : 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title}-summary.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Text to Speech (TTS)
+  const toggleTTS = () => {
+    if (!('speechSynthesis' in window)) {
+      alert('Text-to-Speech is not supported in this browser.');
+      return;
+    }
+
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    const textToRead = activeSummaryText || summaryData?.shortSummary || '';
+    if (!textToRead) return;
+
+    window.speechSynthesis.cancel(); // Stop any pending utterances
+    const utterance = new SpeechSynthesisUtterance(textToRead);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    window.speechSynthesis.speak(utterance);
+    setIsSpeaking(true);
+  };
+
+  // Stop speech synthesis on unmount
+  useEffect(() => {
+    return () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-light-border dark:border-dark-border pb-6">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <h1 className="font-heading text-3xl font-bold text-light-heading dark:text-dark-heading">
-              {t('nav.documind', 'DocuMind')}
+    <div className="space-y-8 max-w-7xl mx-auto py-4">
+      {/* Top Bar: Navigation & Document Switcher */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-light-border dark:border-dark-border pb-6">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-light-heading dark:text-dark-heading tracking-tight">
+              {t('nav.documind', 'DocuMind AI Workspace')}
             </h1>
-            <Badge variant="brand">RAG Intelligence</Badge>
+            <Badge variant="brand" icon={Sparkles}>
+              3-Level Abstraction
+            </Badge>
           </div>
-          <p className="text-sm text-light-body dark:text-dark-body">
-            {t('modules.documindDesc', 'AI document intelligence, 3-level abstraction, OCR extraction, and page-cited RAG conversation.')}
+          <p className="text-xs sm:text-sm text-light-body dark:text-dark-body">
+            Deep multi-tiered summarization, entity extraction, sentiment detection, and multilingual translation.
           </p>
         </div>
 
-        <Button variant="primary" leftIcon={FileUp}>
-          {t('common.upload', 'Upload Document')}
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="col-span-1 md:col-span-2 space-y-6">
-          <div className="border-2 border-dashed border-light-border dark:border-dark-border rounded-xl p-10 text-center hover:border-accent dark:hover:border-accent-light transition-colors cursor-pointer bg-light-surface/50 dark:bg-dark-surface/50 group">
-            <FileUp className="w-12 h-12 text-accent-dark dark:text-accent-light mx-auto mb-3 group-hover:scale-105 transition-transform" />
-            <h3 className="font-heading font-semibold text-base text-light-heading dark:text-dark-heading">
-              {t('common.upload', 'Upload Document')}
-            </h3>
-            <p className="text-xs text-light-body dark:text-dark-body mt-1">
-              Supports PDF, DOCX, TXT, scanned images (up to 25MB)
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-4 rounded-xl bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border flex items-center gap-3">
-              <Layers className="w-5 h-5 text-accent-dark dark:text-accent-light shrink-0" />
-              <div>
-                <p className="text-xs font-semibold text-light-heading dark:text-dark-heading">3-Level Abstraction</p>
-                <p className="text-[10px] text-light-body dark:text-dark-body">Executive, Key Points, Deep Dive</p>
-              </div>
-            </div>
-            <div className="p-4 rounded-xl bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border flex items-center gap-3">
-              <MessageSquare className="w-5 h-5 text-accent-dark dark:text-accent-light shrink-0" />
-              <div>
-                <p className="text-xs font-semibold text-light-heading dark:text-dark-heading">RAG Chatbot</p>
-                <p className="text-[10px] text-light-body dark:text-dark-body">Cited page & paragraph sources</p>
-              </div>
-            </div>
-            <div className="p-4 rounded-xl bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border flex items-center gap-3">
-              <Brain className="w-5 h-5 text-accent-dark dark:text-accent-light shrink-0" />
-              <div>
-                <p className="text-xs font-semibold text-light-heading dark:text-dark-heading">Knowledge Kit</p>
-                <p className="text-[10px] text-light-body dark:text-dark-body">Quizzes, Flashcards, Mindmaps</p>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="space-y-4">
-          <h3 className="font-heading font-semibold text-base text-light-heading dark:text-dark-heading flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-accent-dark dark:text-accent-light" />
-            Recent Documents
-          </h3>
-          <div className="space-y-2.5">
-            {['Contract_NDA_2026.pdf', 'Q4_Quarterly_Strategy.docx', 'Research_Paper_Transformers.pdf'].map((doc) => (
-              <div
-                key={doc}
-                className="p-3 rounded-xl bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border flex items-center justify-between text-xs hover:border-accent dark:hover:border-accent-light cursor-pointer transition-colors"
+        {/* Document Switcher & Upload Button */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Document Selector Dropdown */}
+          {userDocs.length > 0 && (
+            <div className="relative">
+              <select
+                value={docId || ''}
+                onChange={(e) => setSearchParams({ docId: e.target.value })}
+                className="py-2 pl-3 pr-8 rounded-xl text-xs font-medium bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border text-light-heading dark:text-dark-heading focus:outline-none focus:border-brand-red dark:focus:border-brand-redBright max-w-xs truncate cursor-pointer shadow-sm"
               >
-                <span className="truncate max-w-[150px] font-medium text-light-heading dark:text-dark-heading">{doc}</span>
-                <span className="text-[10px] font-mono text-accent-dark dark:text-accent-light font-semibold">Indexed</span>
-              </div>
-            ))}
+                {userDocs.map((d) => (
+                  <option key={d._id} value={d._id}>
+                    {d.originalName} ({formatBytes(d.fileSize)})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={FileUp}
+            onClick={() => setShowUploadModal(!showUploadModal)}
+          >
+            {showUploadModal ? 'Close Uploader' : 'Upload New'}
+          </Button>
+
+          <Button
+            variant="secondary"
+            size="sm"
+            leftIcon={ArrowLeft}
+            onClick={() => navigate('/dashboard')}
+          >
+            Dashboard
+          </Button>
+        </div>
+      </div>
+
+      {/* Collapsible Upload Zone */}
+      <AnimatePresence>
+        {showUploadModal && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <Card className="p-6 border-dashed border-2 border-brand-red/40 bg-brand-red/5 dark:bg-brand-red/10">
+              <DropZone
+                onUploadSuccess={(newDoc) => {
+                  setShowUploadModal(false);
+                  setUserDocs((prev) => [newDoc, ...prev]);
+                  setSearchParams({ docId: newDoc._id });
+                }}
+              />
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Document Active Info Header Banner */}
+      {loadingDoc ? (
+        <Card className="p-5">
+          <div className="flex items-center gap-4">
+            <Skeleton variant="avatar" className="w-12 h-12 rounded-xl" />
+            <div className="space-y-2 flex-1">
+              <Skeleton variant="title" className="w-1/3" />
+              <Skeleton variant="text" className="w-1/4" />
+            </div>
           </div>
         </Card>
-      </div>
+      ) : activeDoc ? (
+        <Card className="p-5 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            {/* Title & Metadata Badges */}
+            <div className="space-y-1.5 min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <FileText className="w-5 h-5 text-brand-red dark:text-brand-redBright shrink-0" />
+                <h2 className="font-heading font-bold text-lg text-light-heading dark:text-dark-heading truncate max-w-xl">
+                  {activeDoc.originalName}
+                </h2>
+                <Badge variant="neutral" size="sm" className="uppercase font-mono text-[10px]">
+                  {activeDoc.fileType}
+                </Badge>
+                {activeDoc.ocrProcessed && (
+                  <Badge variant="brand" size="sm" icon={Sparkles} className="text-[10px]">
+                    OCR Extracted
+                  </Badge>
+                )}
+                {summaryData?.category?.name && (
+                  <Badge variant="info" size="sm" className="text-[10px]">
+                    {summaryData.category.name}
+                  </Badge>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2.5 text-xs text-light-body dark:text-dark-body">
+                <span>{formatBytes(activeDoc.fileSize)}</span>
+                <span>•</span>
+                <span>{activeDoc.pageCount || 1} {activeDoc.pageCount === 1 ? 'page' : 'pages'}</span>
+                <span>•</span>
+                <span>{(activeDoc.wordCount || 0).toLocaleString()} words</span>
+                <span>•</span>
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-brand-orange" />
+                  ~{activeDoc.readingTimeMinutes || 1} min read
+                </span>
+                {activeDoc.detectedLanguage && activeDoc.detectedLanguage !== 'unknown' && (
+                  <>
+                    <span>•</span>
+                    <span className="font-mono text-accent-dark dark:text-accent-light font-semibold uppercase">
+                      Detected: {activeDoc.detectedLanguage}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Direct Language Switcher Quick Pill & Re-summarize */}
+            <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
+              <div className="flex items-center p-1 rounded-xl bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border text-xs font-semibold">
+                <button
+                  onClick={() => {
+                    handleTabChange('translate');
+                    handleTranslate('en');
+                  }}
+                  className="px-2.5 py-1 rounded-lg hover:text-brand-red transition-colors"
+                >
+                  EN
+                </button>
+                <button
+                  onClick={() => {
+                    handleTabChange('translate');
+                    handleTranslate('gu');
+                  }}
+                  className="px-2.5 py-1 rounded-lg hover:text-brand-red transition-colors"
+                >
+                  ગુ
+                </button>
+                <button
+                  onClick={() => {
+                    handleTabChange('translate');
+                    handleTranslate('hi');
+                  }}
+                  className="px-2.5 py-1 rounded-lg hover:text-brand-red transition-colors"
+                >
+                  हिं
+                </button>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={RefreshCw}
+                isLoading={loadingSummary}
+                onClick={() => fetchSummary(true)}
+                title="Force Re-generate Summary"
+              >
+                Regenerate
+              </Button>
+            </div>
+          </div>
+        </Card>
+      ) : (
+        <Card className="p-12 text-center space-y-4">
+          <BookOpen className="w-12 h-12 text-light-body dark:text-dark-body mx-auto opacity-40" />
+          <h3 className="font-heading text-lg font-bold text-light-heading dark:text-dark-heading">
+            No Document Selected
+          </h3>
+          <p className="text-xs text-light-body dark:text-dark-body max-w-md mx-auto">
+            Please select an existing document from the selector above or upload a new PDF, DOCX, TXT, or scanned image to start AI analysis.
+          </p>
+          <Button
+            variant="primary"
+            leftIcon={FileUp}
+            onClick={() => setShowUploadModal(true)}
+            className="bg-brand-gradient shadow-glow-cyan"
+          >
+            Upload Document Now
+          </Button>
+        </Card>
+      )}
+
+      {/* Main DocuMind Intelligence Interface */}
+      {activeDoc && (
+        <div className="space-y-6">
+          {/* Tab Navigation: [Summary] | [Key Info] | [Sentiment & Category] | [Translate] */}
+          <div className="flex items-center gap-2 border-b border-light-border dark:border-dark-border overflow-x-auto pb-1">
+            {[
+              { id: 'summary', label: '3-Level Summary', icon: Layers },
+              { id: 'keyInfo', label: 'Key Information', icon: Tag },
+              { id: 'sentiment', label: 'Sentiment & Category', icon: Sparkles },
+              { id: 'translate', label: 'Multilingual Translate', icon: Languages },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabChange(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-3 border-b-2 font-heading text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                    isActive
+                      ? 'border-brand-red text-brand-red dark:border-brand-redBright dark:text-brand-redBright'
+                      : 'border-transparent text-light-body dark:text-dark-body hover:text-light-heading dark:hover:text-dark-heading hover:border-light-border dark:hover:border-dark-border'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Action Toolbar for Active Tab (Copy, Download, TTS) */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-light-surface/60 dark:bg-dark-surface/60 border border-light-border dark:border-dark-border">
+            <span className="text-xs text-light-body dark:text-dark-body font-medium flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-brand-orange" />
+              Powered by Google Gemini Document Intelligence
+            </span>
+
+            <div className="flex items-center gap-2">
+              {/* Text-to-Speech Button */}
+              <Button
+                variant={isSpeaking ? 'danger' : 'outline'}
+                size="sm"
+                leftIcon={isSpeaking ? VolumeX : Volume2}
+                onClick={toggleTTS}
+                className="text-xs"
+              >
+                {isSpeaking ? 'Stop Audio' : 'Listen (TTS)'}
+              </Button>
+
+              {/* Copy Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={copied ? Check : Copy}
+                onClick={handleCopy}
+                className="text-xs"
+              >
+                {copied ? 'Copied' : 'Copy'}
+              </Button>
+
+              {/* Download Markdown */}
+              <Button
+                variant="secondary"
+                size="sm"
+                leftIcon={Download}
+                onClick={() => handleDownload('md')}
+                className="text-xs"
+              >
+                Export .MD
+              </Button>
+            </div>
+          </div>
+
+          {/* TAB CONTENT 1: 3-LEVEL ABSTRACTION SUMMARY */}
+          {activeTab === 'summary' && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-6"
+            >
+              {/* 3-Tier Segmented Depth Pill Toggle */}
+              <div className="flex items-center justify-center">
+                <div className="inline-flex p-1.5 rounded-2xl bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border shadow-sm">
+                  {[
+                    { id: 'short', label: 'Short (2–3 Lines)', desc: 'High-level Overview' },
+                    { id: 'medium', label: 'Medium (Key Takeaways)', desc: 'Executive Bullets' },
+                    { id: 'detailed', label: 'Detailed (In-Depth)', desc: 'Full Breakdown' },
+                  ].map((level) => {
+                    const isSelected = abstractionDepth === level.id;
+                    return (
+                      <button
+                        key={level.id}
+                        onClick={() => setAbstractionDepth(level.id)}
+                        className={`relative px-4 sm:px-6 py-2.5 rounded-xl font-heading text-xs sm:text-sm font-semibold transition-all ${
+                          isSelected
+                            ? 'bg-gradient-to-r from-brand-red to-brand-orange text-white shadow-glow-red scale-[1.02]'
+                            : 'text-light-body dark:text-dark-body hover:text-light-heading dark:hover:text-dark-heading hover:bg-light-bg/50 dark:hover:bg-dark-bg/50'
+                        }`}
+                      >
+                        {level.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Summary View Content Area */}
+              {loadingSummary ? (
+                <Card className="p-8 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-5 h-5 rounded-full border-2 border-brand-red border-t-transparent animate-spin" />
+                    <span className="text-xs font-semibold text-light-heading dark:text-dark-heading">
+                      Generating multi-level abstraction with Gemini AI...
+                    </span>
+                  </div>
+                  <Skeleton variant="title" className="w-1/2" />
+                  <Skeleton variant="text" />
+                  <Skeleton variant="text" />
+                  <Skeleton variant="text" className="w-3/4" />
+                </Card>
+              ) : summaryData ? (
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={abstractionDepth}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {/* Level 1: Short Summary */}
+                    {abstractionDepth === 'short' && (
+                      <Card className="p-6 sm:p-8 space-y-4 border-l-4 border-l-brand-red dark:border-l-brand-redBright bg-gradient-to-br from-brand-red/5 via-transparent to-brand-orange/5">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-heading text-lg font-bold text-light-heading dark:text-dark-heading flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-brand-red dark:text-brand-redBright" />
+                            Executive Overview
+                          </h3>
+                          <Badge variant="brand" size="sm">2–3 Sentences</Badge>
+                        </div>
+                        <p className="text-sm sm:text-base leading-relaxed text-light-heading dark:text-dark-heading font-medium indic-text">
+                          {summaryData.shortSummary}
+                        </p>
+                      </Card>
+                    )}
+
+                    {/* Level 2: Medium Executive Bullets */}
+                    {abstractionDepth === 'medium' && (
+                      <Card className="p-6 sm:p-8 space-y-4">
+                        <div className="flex items-center justify-between pb-3 border-b border-light-border dark:border-dark-border">
+                          <h3 className="font-heading text-lg font-bold text-light-heading dark:text-dark-heading flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                            Core Takeaways & Strategic Bullet Points
+                          </h3>
+                          <Badge variant="success" size="sm">
+                            {summaryData.mediumSummary?.length || 0} Key Points
+                          </Badge>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 pt-2">
+                          {(summaryData.mediumSummary || []).map((bullet, idx) => (
+                            <motion.div
+                              key={idx}
+                              initial={{ opacity: 0, x: -6 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: idx * 0.05 }}
+                              className="p-3.5 rounded-xl bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border flex items-start gap-3 hover:border-brand-red dark:hover:border-brand-redBright transition-colors"
+                            >
+                              <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-brand-red/10 text-brand-red dark:bg-brand-redBright/10 dark:text-brand-redBright font-mono font-bold text-xs shrink-0 mt-0.5">
+                                {idx + 1}
+                              </span>
+                              <p className="text-xs sm:text-sm text-light-heading dark:text-dark-heading font-medium leading-relaxed indic-text">
+                                {bullet}
+                              </p>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </Card>
+                    )}
+
+                    {/* Level 3: Detailed In-Depth Breakdown */}
+                    {abstractionDepth === 'detailed' && (
+                      <Card className="p-6 sm:p-8 space-y-4">
+                        <div className="flex items-center justify-between pb-3 border-b border-light-border dark:border-dark-border">
+                          <h3 className="font-heading text-lg font-bold text-light-heading dark:text-dark-heading flex items-center gap-2">
+                            <BookOpen className="w-4 h-4 text-accent-dark dark:text-accent-light" />
+                            Comprehensive Section-by-Section Explanation
+                          </h3>
+                          <Badge variant="neutral" size="sm">Full Narrative</Badge>
+                        </div>
+
+                        <div className="prose prose-sm dark:prose-invert max-w-none text-light-heading dark:text-dark-heading leading-indic whitespace-pre-wrap font-sans text-xs sm:text-sm pt-2">
+                          {summaryData.detailedSummary}
+                        </div>
+                      </Card>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
+              ) : null}
+            </motion.div>
+          )}
+
+          {/* TAB CONTENT 2: KEY INFORMATION EXTRACTION */}
+          {activeTab === 'keyInfo' && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-6"
+            >
+              {loadingKeyInfo ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <Card key={i} className="p-5 space-y-3">
+                      <Skeleton variant="title" className="w-1/3" />
+                      <div className="flex gap-2">
+                        <Skeleton variant="rect" className="w-20 h-6 rounded-lg" />
+                        <Skeleton variant="rect" className="w-24 h-6 rounded-lg" />
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              ) : keyInfoData ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {/* People */}
+                  <Card className="p-5 space-y-3">
+                    <div className="flex items-center gap-2 text-brand-red dark:text-brand-redBright">
+                      <Users className="w-4 h-4" />
+                      <h4 className="font-heading font-semibold text-sm">People & Stakeholders</h4>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {keyInfoData.people?.length > 0 ? (
+                        keyInfoData.people.map((person, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2.5 py-1 rounded-lg text-xs font-medium bg-brand-red/10 text-brand-red dark:bg-brand-redBright/15 dark:text-brand-redBright border border-brand-red/20"
+                          >
+                            {person}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs text-light-body dark:text-dark-body">No specific people detected.</span>
+                      )}
+                    </div>
+                  </Card>
+
+                  {/* Organizations */}
+                  <Card className="p-5 space-y-3">
+                    <div className="flex items-center gap-2 text-blue-500">
+                      <Building2 className="w-4 h-4" />
+                      <h4 className="font-heading font-semibold text-sm">Organizations & Companies</h4>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {keyInfoData.organizations?.length > 0 ? (
+                        keyInfoData.organizations.map((org, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
+                          >
+                            {org}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs text-light-body dark:text-dark-body">No organizations detected.</span>
+                      )}
+                    </div>
+                  </Card>
+
+                  {/* Dates & Deadlines */}
+                  <Card className="p-5 space-y-3">
+                    <div className="flex items-center gap-2 text-emerald-500">
+                      <Calendar className="w-4 h-4" />
+                      <h4 className="font-heading font-semibold text-sm">Dates & Deadlines</h4>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {keyInfoData.dates?.length > 0 ? (
+                        keyInfoData.dates.map((d, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                          >
+                            {d}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs text-light-body dark:text-dark-body">No explicit dates detected.</span>
+                      )}
+                    </div>
+                  </Card>
+
+                  {/* Metrics & Financials */}
+                  <Card className="p-5 space-y-3">
+                    <div className="flex items-center gap-2 text-amber-500">
+                      <TrendingUp className="w-4 h-4" />
+                      <h4 className="font-heading font-semibold text-sm">Metrics & Financials</h4>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {keyInfoData.metrics?.length > 0 ? (
+                        keyInfoData.metrics.map((metric, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2.5 py-1 rounded-lg text-xs font-mono font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                          >
+                            {metric}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs text-light-body dark:text-dark-body">No financial or numerical metrics detected.</span>
+                      )}
+                    </div>
+                  </Card>
+
+                  {/* Keywords & Tags */}
+                  <Card className="p-5 space-y-3 md:col-span-2">
+                    <div className="flex items-center gap-2 text-cyan-500">
+                      <Tag className="w-4 h-4" />
+                      <h4 className="font-heading font-semibold text-sm">Keywords & Subject Tags</h4>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {keyInfoData.keywords?.length > 0 ? (
+                        keyInfoData.keywords.map((kw, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2.5 py-1 rounded-lg text-xs font-medium bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 hover:scale-105 transition-transform cursor-pointer"
+                          >
+                            #{kw}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs text-light-body dark:text-dark-body">No keywords extracted.</span>
+                      )}
+                    </div>
+                  </Card>
+                </div>
+              ) : null}
+            </motion.div>
+          )}
+
+          {/* TAB CONTENT 3: SENTIMENT & CATEGORY DETECTION */}
+          {activeTab === 'sentiment' && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-6"
+            >
+              {loadingSentiment ? (
+                <Card className="p-8 space-y-4">
+                  <Skeleton variant="title" className="w-1/3" />
+                  <Skeleton variant="rect" className="h-16 w-full rounded-xl" />
+                </Card>
+              ) : sentimentData ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Sentiment Card */}
+                  <Card className="p-6 space-y-4 border-l-4 border-l-brand-orange bg-gradient-to-br from-brand-orange/5 to-transparent">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-heading font-bold text-base text-light-heading dark:text-dark-heading">
+                        Tone & Sentiment Analysis
+                      </h3>
+                      {sentimentData.sentiment?.label === 'positive' ? (
+                        <Badge variant="success" icon={CheckCircle2} size="md">
+                          Positive
+                        </Badge>
+                      ) : sentimentData.sentiment?.label === 'negative' ? (
+                        <Badge variant="error" icon={AlertTriangle} size="md">
+                          Negative
+                        </Badge>
+                      ) : (
+                        <Badge variant="warning" icon={Info} size="md">
+                          Neutral
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Confidence Meter */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-xs font-semibold">
+                        <span className="text-light-body dark:text-dark-body">Confidence Score</span>
+                        <span className="font-mono text-light-heading dark:text-dark-heading">
+                          {Math.round((sentimentData.sentiment?.score || 0.75) * 100)}%
+                        </span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-light-border dark:bg-dark-border overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-brand-orange to-brand-red"
+                          style={{
+                            width: `${Math.round((sentimentData.sentiment?.score || 0.75) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border space-y-1">
+                      <p className="text-xs font-semibold text-light-heading dark:text-dark-heading">
+                        Reasoning / Justification:
+                      </p>
+                      <p className="text-xs text-light-body dark:text-dark-body leading-relaxed">
+                        {sentimentData.sentiment?.reason || 'The document maintains an objective and informative tone.'}
+                      </p>
+                    </div>
+                  </Card>
+
+                  {/* Domain Category Card */}
+                  <Card className="p-6 space-y-4 border-l-4 border-l-accent bg-gradient-to-br from-accent/5 to-transparent">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-heading font-bold text-base text-light-heading dark:text-dark-heading">
+                        Domain Classification
+                      </h3>
+                      <Badge variant="brand" size="md">
+                        {sentimentData.category?.name || 'General'}
+                      </Badge>
+                    </div>
+
+                    {/* Confidence Meter */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-xs font-semibold">
+                        <span className="text-light-body dark:text-dark-body">Category Confidence</span>
+                        <span className="font-mono text-light-heading dark:text-dark-heading">
+                          {Math.round((sentimentData.category?.confidence || 0.85) * 100)}%
+                        </span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-light-border dark:bg-dark-border overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-accent to-accent-light"
+                          style={{
+                            width: `${Math.round((sentimentData.category?.confidence || 0.85) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border space-y-2">
+                      <p className="text-xs font-semibold text-light-heading dark:text-dark-heading">
+                        Detected Topic Attributes:
+                      </p>
+                      <p className="text-xs text-light-body dark:text-dark-body leading-relaxed">
+                        Document content aligns with standard {sentimentData.category?.name || 'General'} conventions, terminology, and operational context.
+                      </p>
+                    </div>
+                  </Card>
+                </div>
+              ) : null}
+            </motion.div>
+          )}
+
+          {/* TAB CONTENT 4: MULTILINGUAL TRANSLATION */}
+          {activeTab === 'translate' && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-6"
+            >
+              {/* Language Selection Bar */}
+              <Card className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <h3 className="font-heading font-bold text-base text-light-heading dark:text-dark-heading flex items-center gap-2">
+                    <Languages className="w-5 h-5 text-accent-dark dark:text-accent-light" />
+                    Multilingual Document Intelligence (EN / ગુ / हिં)
+                  </h3>
+                  <p className="text-xs text-light-body dark:text-dark-body">
+                    Translate structured abstraction into Gujarati or Hindi with full conjunct font rendering and line-height: 1.7.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={targetTranslationLang === 'gu' ? 'primary' : 'outline'}
+                    size="sm"
+                    onClick={() => handleTranslate('gu')}
+                    isLoading={translating && targetTranslationLang === 'gu'}
+                    className={targetTranslationLang === 'gu' ? 'bg-brand-gradient shadow-glow-cyan' : ''}
+                  >
+                    ગુજરાતી (Gujarati)
+                  </Button>
+                  <Button
+                    variant={targetTranslationLang === 'hi' ? 'primary' : 'outline'}
+                    size="sm"
+                    onClick={() => handleTranslate('hi')}
+                    isLoading={translating && targetTranslationLang === 'hi'}
+                    className={targetTranslationLang === 'hi' ? 'bg-brand-gradient shadow-glow-cyan' : ''}
+                  >
+                    हिन्दी (Hindi)
+                  </Button>
+                  <Button
+                    variant={targetTranslationLang === 'en' ? 'primary' : 'outline'}
+                    size="sm"
+                    onClick={() => handleTranslate('en')}
+                    isLoading={translating && targetTranslationLang === 'en'}
+                  >
+                    English
+                  </Button>
+                </div>
+              </Card>
+
+              {/* Translation Display */}
+              {translating ? (
+                <Card className="p-8 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-5 h-5 rounded-full border-2 border-brand-red border-t-transparent animate-spin" />
+                    <span className="text-xs font-semibold text-light-heading dark:text-dark-heading">
+                      Translating content with Gemini into {targetTranslationLang === 'gu' ? 'Gujarati' : targetTranslationLang === 'hi' ? 'Hindi' : 'English'}...
+                    </span>
+                  </div>
+                  <Skeleton variant="title" className="w-1/2" />
+                  <Skeleton variant="text" />
+                  <Skeleton variant="text" />
+                </Card>
+              ) : translationResult ? (
+                <div className="space-y-6">
+                  {/* Translated Short */}
+                  <Card className="p-6 space-y-3 border-l-4 border-l-brand-red dark:border-l-brand-redBright">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-heading font-bold text-base text-light-heading dark:text-dark-heading">
+                        {targetTranslationLang === 'gu' ? 'ટૂંકો સારાંશ (Short Summary)' : targetTranslationLang === 'hi' ? 'संक्षिप्त सारांश (Short Summary)' : 'Short Summary'}
+                      </h4>
+                      <Badge variant="brand" size="sm">
+                        {targetTranslationLang.toUpperCase()}
+                      </Badge>
+                    </div>
+                    <p className="text-sm sm:text-base leading-indic font-medium text-light-heading dark:text-dark-heading indic-text">
+                      {translationResult.short}
+                    </p>
+                  </Card>
+
+                  {/* Translated Bullets */}
+                  {Array.isArray(translationResult.medium) && translationResult.medium.length > 0 && (
+                    <Card className="p-6 space-y-4">
+                      <h4 className="font-heading font-bold text-base text-light-heading dark:text-dark-heading">
+                        {targetTranslationLang === 'gu' ? 'મુખ્ય મુદ્દાઓ (Key Takeaways)' : targetTranslationLang === 'hi' ? 'मुख्य बिंदु (Key Takeaways)' : 'Key Takeaways'}
+                      </h4>
+                      <div className="grid grid-cols-1 gap-2.5">
+                        {translationResult.medium.map((item, idx) => (
+                          <div
+                            key={idx}
+                            className="p-3 rounded-xl bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border flex items-start gap-3"
+                          >
+                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-brand-red/10 text-brand-red font-mono font-bold text-xs shrink-0 mt-0.5">
+                              {idx + 1}
+                            </span>
+                            <p className="text-xs sm:text-sm text-light-heading dark:text-dark-heading leading-indic indic-text">
+                              {item}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </Card>
+                  )}
+
+                  {/* Translated Detailed */}
+                  {translationResult.detailed && (
+                    <Card className="p-6 space-y-3">
+                      <h4 className="font-heading font-bold text-base text-light-heading dark:text-dark-heading">
+                        {targetTranslationLang === 'gu' ? 'વિગતવાર સમજૂતી (Detailed Breakdown)' : targetTranslationLang === 'hi' ? 'विस्तृत विश्लेषण (Detailed Breakdown)' : 'Detailed Breakdown'}
+                      </h4>
+                      <div className="text-xs sm:text-sm leading-indic whitespace-pre-wrap text-light-heading dark:text-dark-heading font-sans indic-text">
+                        {translationResult.detailed}
+                      </div>
+                    </Card>
+                  )}
+                </div>
+              ) : (
+                <div className="p-10 text-center rounded-2xl bg-light-surface/40 dark:bg-dark-surface/40 border border-dashed border-light-border dark:border-dark-border space-y-3">
+                  <Languages className="w-10 h-10 text-accent-dark dark:text-accent-light mx-auto" />
+                  <h4 className="font-heading font-semibold text-sm text-light-heading dark:text-dark-heading">
+                    Ready for Multilingual Translation
+                  </h4>
+                  <p className="text-xs text-light-body dark:text-dark-body max-w-sm mx-auto">
+                    Click Gujarati or Hindi above to generate instant multilingual summary versions with high grammatical fidelity.
+                  </p>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

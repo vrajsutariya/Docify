@@ -23,21 +23,21 @@ export const Button = React.forwardRef(
     const isDisabled = disabled || isLoading;
 
     const baseStyles =
-      'relative inline-flex items-center justify-center font-medium rounded-xl transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed select-none overflow-hidden';
+      'relative inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed select-none overflow-hidden cursor-pointer';
 
     const variants = {
       primary:
-        'bg-accent text-white hover:bg-accent-hover dark:bg-accent-light dark:text-black dark:hover:bg-accent shadow-soft',
+        'bg-accent text-black font-bold hover:bg-cyan-400 hover:text-black hover:border-cyan-400 hover:shadow-glow-cyan dark:bg-accent-light dark:text-black dark:hover:bg-cyan-300 dark:hover:text-black dark:hover:shadow-glow-cyan shadow-soft',
       gradient:
-        'btn-gradient text-white shadow-soft dark:shadow-glow-cyan',
+        'btn-gradient text-white hover:bg-cyan-400 hover:text-black hover:shadow-glow-cyan shadow-soft',
       secondary:
-        'bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border text-light-heading dark:text-dark-heading hover:border-accent dark:hover:border-accent-light shadow-sm',
+        'bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border text-light-heading dark:text-dark-heading hover:bg-cyan-400 hover:text-black hover:border-cyan-400 hover:shadow-glow-cyan dark:hover:bg-cyan-400 dark:hover:text-black dark:hover:border-cyan-400 shadow-sm',
       outline:
-        'border border-accent dark:border-accent-light text-accent-dark dark:text-accent-light bg-transparent hover:bg-accent/10 dark:hover:bg-accent-light/10',
+        'border border-accent dark:border-accent-light text-accent-dark dark:text-accent-light bg-transparent hover:bg-cyan-400 hover:text-black hover:border-cyan-400 hover:shadow-glow-cyan dark:hover:bg-cyan-400 dark:hover:text-black dark:hover:border-cyan-400',
       danger:
-        'bg-status-error text-white hover:bg-red-700 shadow-soft focus-visible:ring-status-error',
+        'bg-status-error text-white hover:bg-cyan-500 hover:text-black hover:shadow-glow-cyan shadow-soft focus-visible:ring-status-error',
       ghost:
-        'bg-transparent text-light-heading dark:text-dark-heading hover:bg-light-surface dark:hover:bg-dark-surface',
+        'bg-transparent text-light-heading dark:text-dark-heading hover:bg-cyan-400 hover:text-black hover:shadow-glow-cyan dark:hover:bg-cyan-400 dark:hover:text-black',
     };
 
     const sizes = {
