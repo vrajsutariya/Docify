@@ -23,54 +23,264 @@ import {
   X,
   HelpCircle,
   ShieldCheck,
-  Eye,
+  Square,
+  RotateCcw,
+  Edit2,
+  Award,
+  GraduationCap,
+  Lightbulb,
+  Code,
+  ArrowRight,
 } from 'lucide-react';
 import { Card } from '../common/Card';
 import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
 import { askDocumentQuestion } from '../../services/chatService';
 
+/**
+ * Format markdown text into ChatGPT-style rich elements with inline citation badges and copyable code blocks
+ */
+const renderChatMarkdown = (text, onOpenCitation, msg) => {
+  if (!text) return null;
+
+  // Split content into blocks: code blocks vs standard text blocks
+  const codeBlockRegex = /```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g;
+  const blocks = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = codeBlockRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      blocks.push({ type: 'text', content: text.slice(lastIndex, match.index) });
+    }
+    blocks.push({
+      type: 'code',
+      language: match[1] || 'text',
+      code: match[2].trim(),
+    });
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    blocks.push({ type: 'text', content: text.slice(lastIndex) });
+  }
+
+  // Helper to render text with bold, bullet points, headings, and [Page X] badges
+  const renderFormattedParagraph = (para, pIdx) => {
+    const trimmed = para.trim();
+    if (!trimmed) return null;
+
+    // Headings
+    if (trimmed.startsWith('####')) {
+      return (
+        <h5 key={pIdx} className="font-heading font-bold text-xs sm:text-sm text-brand-orange mt-2 mb-1">
+          {renderInlineElements(trimmed.replace(/^####\s*/, ''), onOpenCitation, msg)}
+        </h5>
+      );
+    }
+    if (trimmed.startsWith('###')) {
+      return (
+        <h4 key={pIdx} className="font-heading font-bold text-sm sm:text-base text-light-heading dark:text-dark-heading mt-3 mb-1.5 border-b border-light-border/40 dark:border-dark-border/40 pb-1">
+          {renderInlineElements(trimmed.replace(/^###\s*/, ''), onOpenCitation, msg)}
+        </h4>
+      );
+    }
+    if (trimmed.startsWith('##')) {
+      return (
+        <h3 key={pIdx} className="font-heading font-bold text-base text-brand-red dark:text-brand-redBright mt-3 mb-1.5">
+          {renderInlineElements(trimmed.replace(/^##\s*/, ''), onOpenCitation, msg)}
+        </h3>
+      );
+    }
+
+    // Bullet points
+    if (/^[*-]\s+/.test(trimmed)) {
+      const items = trimmed.split(/\n[*-]\s+/);
+      return (
+        <ul key={pIdx} className="space-y-1.5 my-2 pl-2">
+          {items.map((item, i) => (
+            <li key={i} className="flex items-start gap-2 text-xs sm:text-sm leading-relaxed text-light-body dark:text-dark-body">
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-orange mt-1.5 shrink-0" />
+              <div className="flex-1">
+                {renderInlineElements(item.replace(/^[*-]\s+/, ''), onOpenCitation, msg)}
+              </div>
+            </li>
+          ))}
+        </ul>
+      );
+    }
+
+    // Numbered lists
+    if (/^[0-9]+\.\s+/.test(trimmed)) {
+      const items = trimmed.split(/\n(?=[0-9]+\.\s+)/);
+      return (
+        <ol key={pIdx} className="space-y-1.5 my-2 pl-2">
+          {items.map((item, i) => {
+            const numMatch = item.match(/^([0-9]+)\.\s+/);
+            const num = numMatch ? numMatch[1] : i + 1;
+            const body = item.replace(/^[0-9]+\.\s+/, '');
+            return (
+              <li key={i} className="flex items-start gap-2 text-xs sm:text-sm leading-relaxed text-light-body dark:text-dark-body">
+                <span className="text-[11px] font-bold text-brand-red dark:text-brand-redBright font-mono shrink-0 mt-0.5">
+                  {num}.
+                </span>
+                <div className="flex-1">
+                  {renderInlineElements(body, onOpenCitation, msg)}
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      );
+    }
+
+    // Standard paragraph
+    return (
+      <p key={pIdx} className="text-xs sm:text-sm leading-relaxed text-light-body dark:text-dark-body my-1.5">
+        {renderInlineElements(trimmed, onOpenCitation, msg)}
+      </p>
+    );
+  };
+
+  return blocks.map((block, bIdx) => {
+    if (block.type === 'code') {
+      return <ChatCodeBlock key={bIdx} language={block.language} code={block.code} />;
+    }
+
+    // Split text into paragraphs
+    const paragraphs = block.content.split(/\n\s*\n/);
+    return (
+      <div key={bIdx} className="space-y-1.5">
+        {paragraphs.map((p, pIdx) => renderFormattedParagraph(p, pIdx))}
+      </div>
+    );
+  });
+};
+
+/**
+ * Renders inline bold, inline code, and clickable [Page X] citation badges
+ */
+const renderInlineElements = (text, onOpenCitation, msg) => {
+  if (!text) return null;
+
+  // Pattern matching citations e.g. [Page 2], [Page 2, 4], [Pages 5]
+  const citationPattern = /(\[(?:Page|Pages)?\s*\d+(?:[,\s&and]+\d+)*\])/gi;
+  const parts = text.split(citationPattern);
+
+  return parts.map((part, index) => {
+    if (citationPattern.test(part)) {
+      const numbers = (part.match(/\d+/g) || [])
+        .map((n) => parseInt(n, 10))
+        .filter((n) => !isNaN(n) && n > 0);
+
+      if (numbers.length === 0) return <span key={index}>{part}</span>;
+
+      return (
+        <span key={index} className="inline-flex items-center gap-1 mx-0.5 align-baseline">
+          {numbers.map((num) => (
+            <button
+              key={num}
+              type="button"
+              onClick={() => onOpenCitation?.(num, msg)}
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md font-mono text-[11px] font-bold border transition-all cursor-pointer shadow-xs bg-brand-red/10 dark:bg-brand-red/25 border-brand-red/30 text-brand-red dark:text-brand-redBright hover:bg-brand-red hover:text-white dark:hover:bg-brand-red dark:hover:text-white"
+              title={`Open Page ${num} in PDF Viewer`}
+            >
+              <BookOpen className="w-2.5 h-2.5" />
+              <span>[Page {num}]</span>
+            </button>
+          ))}
+        </span>
+      );
+    }
+
+    // Bold formatting (**term**)
+    const boldParts = part.split(/(\*\*[^*]+\*\*)/g);
+    return boldParts.map((bPart, bIdx) => {
+      if (bPart.startsWith('**') && bPart.endsWith('**')) {
+        return (
+          <strong key={bIdx} className="font-bold text-light-heading dark:text-dark-heading">
+            {bPart.slice(2, -2)}
+          </strong>
+        );
+      }
+      return <span key={bIdx}>{bPart}</span>;
+    });
+  });
+};
+
+/**
+ * Code Block Component with Language Tag and Copy Button
+ */
+const ChatCodeBlock = ({ language, code }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="my-3 rounded-xl overflow-hidden border border-light-border dark:border-dark-border bg-zinc-900 text-zinc-100 shadow-md">
+      <div className="flex items-center justify-between px-3.5 py-1.5 bg-zinc-950/80 border-b border-zinc-800 text-[11px] text-zinc-400">
+        <span className="font-mono uppercase font-semibold text-brand-orange">{language}</span>
+        <button
+          type="button"
+          onClick={handleCopyCode}
+          className="flex items-center gap-1 text-[11px] hover:text-white transition-colors"
+        >
+          {copied ? (
+            <>
+              <Check className="w-3 h-3 text-emerald-400" />
+              <span className="text-emerald-400">Copied</span>
+            </>
+          ) : (
+            <>
+              <Copy className="w-3 h-3" />
+              <span>Copy code</span>
+            </>
+          )}
+        </button>
+      </div>
+      <pre className="p-3.5 overflow-x-auto text-xs font-mono leading-relaxed text-zinc-200">
+        <code>{code}</code>
+      </pre>
+    </div>
+  );
+};
+
 export const DocumentChat = ({
   activeDoc,
   userDocs = [],
   onSelectDoc,
 }) => {
-  // Selected Document IDs for single or multi-doc chat
-  const [selectedDocIds, setSelectedDocIds] = useState(
-    activeDoc ? [activeDoc._id] : []
-  );
-
-  // Multi-document selector dropdown open state
+  const [selectedDocIds, setSelectedDocIds] = useState(activeDoc ? [activeDoc._id] : []);
   const [showDocSelector, setShowDocSelector] = useState(false);
-
-  // Language state: 'en' | 'gu' | 'hi'
   const [language, setLanguage] = useState('en');
-
-  // Chat messages: [{ id, sender: 'user' | 'assistant', text, citedPages, relevantChunks, confidence, timestamp }]
   const [messages, setMessages] = useState([]);
   const [inputQuestion, setInputQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
 
-  // Voice Speech-to-Text (STT) State
+  // Voice Speech-to-Text State
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef(null);
 
-  // Text-to-Speech (TTS) State
+  // Text-to-Speech State
   const [speakingMsgId, setSpeakingMsgId] = useState(null);
 
-  // Interactive PDF Viewer & Citation Modal State
-  const [activePdfModal, setActivePdfModal] = useState(null); // { pageNumber, totalPages, documentName, documentId, fileUrl, snippet, score, viewMode }
+  // Interactive PDF Viewer Modal State
+  const [activePdfModal, setActivePdfModal] = useState(null);
 
   // Copy feedback state
   const [copiedId, setCopiedId] = useState(null);
 
-  // Auto-scroll ref
+  // AbortController for stopping generation
+  const abortControllerRef = useRef(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const selectorDropdownRef = useRef(null);
 
-  // Synchronize when activeDoc prop changes from parent
+  // Sync when activeDoc changes
   useEffect(() => {
     if (activeDoc?._id && !selectedDocIds.includes(activeDoc._id)) {
       setSelectedDocIds([activeDoc._id]);
@@ -80,10 +290,7 @@ export const DocumentChat = ({
   // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (
-        selectorDropdownRef.current &&
-        !selectorDropdownRef.current.contains(e.target)
-      ) {
+      if (selectorDropdownRef.current && !selectorDropdownRef.current.contains(e.target)) {
         setShowDocSelector(false);
       }
     };
@@ -96,25 +303,24 @@ export const DocumentChat = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
-  // Clean up speech synthesis and recognition on unmount
+  // Clean up on unmount
   useEffect(() => {
     return () => {
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
       if (recognitionRef.current) {
         try {
           recognitionRef.current.stop();
         } catch (_) {}
       }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
   }, []);
 
-  // Toggle document selection in multi-doc selector
   const toggleDocSelection = (id) => {
     setSelectedDocIds((prev) => {
       if (prev.includes(id)) {
-        // Prevent unchecking the very last document
         if (prev.length === 1) return prev;
         return prev.filter((dId) => dId !== id);
       } else {
@@ -123,7 +329,6 @@ export const DocumentChat = ({
     });
   };
 
-  // Select all or single
   const handleSelectAllDocs = () => {
     if (selectedDocIds.length === userDocs.length) {
       if (activeDoc?._id) setSelectedDocIds([activeDoc._id]);
@@ -132,29 +337,17 @@ export const DocumentChat = ({
     }
   };
 
-  // Suggested Starter Prompts
-  const suggestedPrompts = {
-    en: [
-      'Summarize the key findings and conclusions',
-      'What are the primary dates, deadlines, or timelines?',
-      'Are there any financial metrics, costs, or numbers mentioned?',
-      'What are the critical risks, penalties, or warnings?',
-    ],
-    gu: [
-      'આ દસ્તાવેજના મુખ્ય તારણો અને સારાંશ જણાવો',
-      'શું આમાં કોઈ નાણાકીય આંકડા અથવા ખર્ચનો ઉલ્લેખ છે?',
-      'મહત્વપૂર્ણ તારીખો, સમયમર્યાદા અથવા શરતો કઈ છે?',
-      'દસ્તાવેજમાં દર્શાવેલ મુખ્ય જોખમો અથવા ચેતવણીઓ શું છે?',
-    ],
-    hi: [
-      'इस दस्तावेज़ के मुख्य निष्कर्ष और सारांश बताएं',
-      'क्या इसमें कोई वित्तीय आंकड़े या लागत का उल्लेख है?',
-      'महत्वपूर्ण तिथियां, समय-सीमा या शर्तें क्या हैं?',
-      'दस्तावेज़ में उल्लिखित प्रमुख जोखिम या चेतावनियां क्या हैं?',
-    ],
-  };
+  // Quick Action Pills
+  const quickActionPills = [
+    { label: '2 Marks Answer', prompt: 'Provide a crisp 2-mark university exam answer with a formal definition and 2 key points.' },
+    { label: '4 Marks Answer', prompt: 'Provide a structured 4-mark university exam answer with definition, explanation, and example.' },
+    { label: '6 Marks Answer', prompt: 'Provide a comprehensive 6-mark university exam answer with introduction, mechanism, diagram, and conclusion.' },
+    { label: '10 Marks Answer', prompt: 'Provide an exhaustive 8-10 mark masterclass answer with full architecture, steps, pros/cons, diagram, and practical use cases.' },
+    { label: 'Code Example', prompt: 'Provide a clean, runnable code example with step-by-step logic and file placement.' },
+    { label: 'Compare Concepts', prompt: 'Create a clear comparison table contrasting the core concepts discussed in this document.' },
+  ];
 
-  // Submit User Question
+  // Submit User Question with Full Conversation History
   const handleSendMessage = async (textToSend) => {
     const question = (textToSend || inputQuestion).trim();
     if (!question || isLoading) return;
@@ -174,11 +367,25 @@ export const DocumentChat = ({
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setIsLoading(true);
 
+    // Format conversation history for backend
+    const conversationHistory = updatedMessages.map((m) => ({
+      role: m.sender === 'user' ? 'user' : 'assistant',
+      text: m.text,
+    }));
+
     try {
-      const response = await askDocumentQuestion(selectedDocIds, question, language);
+      abortControllerRef.current = new AbortController();
+
+      const response = await askDocumentQuestion(
+        selectedDocIds,
+        question,
+        language,
+        conversationHistory
+      );
       const data = response?.data || {};
 
       const assistantMessage = {
@@ -188,11 +395,16 @@ export const DocumentChat = ({
         citedPages: data.citedPages || [],
         confidence: data.confidence || 0.85,
         relevantChunks: data.relevantChunks || [],
+        followUpSuggestions: data.followUpSuggestions || [],
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {
+      if (err.name === 'AbortError' || err.message === 'canceled') {
+        console.log('[DocumentChat] Generation stopped by user.');
+        return;
+      }
       console.error('[DocumentChat] Chat error:', err);
       const errorMsg =
         err?.response?.data?.message ||
@@ -211,24 +423,50 @@ export const DocumentChat = ({
       setMessages((prev) => [...prev, fallbackErrorMsg]);
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   };
 
-  // Speech-to-Text (Voice Input) Handler
-  const toggleSpeechRecognition = () => {
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
+  // Stop Generation
+  const handleStopGenerating = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    setIsLoading(false);
+  };
 
+  // Regenerate Response
+  const handleRegenerate = () => {
+    if (isLoading || messages.length === 0) return;
+    const lastUserMsg = [...messages].reverse().find((m) => m.sender === 'user');
+    if (lastUserMsg) {
+      // Remove last assistant response and re-send
+      setMessages((prev) => {
+        const copy = [...prev];
+        if (copy[copy.length - 1]?.sender === 'assistant') copy.pop();
+        return copy;
+      });
+      handleSendMessage(lastUserMsg.text);
+    }
+  };
+
+  // Edit Message
+  const handleEditMessage = (text) => {
+    setInputQuestion(text);
+    inputRef.current?.focus();
+  };
+
+  // STT Voice Input
+  const toggleSpeechRecognition = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert('Speech Recognition is not supported by your current browser. Please try Google Chrome or Edge.');
+      alert('Speech Recognition is not supported by your current browser. Please try Chrome or Edge.');
       return;
     }
 
     if (isListening) {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
+      if (recognitionRef.current) recognitionRef.current.stop();
       setIsListening(false);
       return;
     }
@@ -237,19 +475,10 @@ export const DocumentChat = ({
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = false;
-
-      // Set language according to active selection
-      const langCodes = {
-        en: 'en-US',
-        gu: 'gu-IN',
-        hi: 'hi-IN',
-      };
+      const langCodes = { en: 'en-US', gu: 'gu-IN', hi: 'hi-IN' };
       recognition.lang = langCodes[language] || 'en-US';
 
-      recognition.onstart = () => {
-        setIsListening(true);
-      };
-
+      recognition.onstart = () => setIsListening(true);
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         if (transcript) {
@@ -257,15 +486,8 @@ export const DocumentChat = ({
         }
         setIsListening(false);
       };
-
-      recognition.onerror = (event) => {
-        console.warn('[DocumentChat] STT error:', event.error);
-        setIsListening(false);
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
+      recognition.onerror = () => setIsListening(false);
+      recognition.onend = () => setIsListening(false);
 
       recognitionRef.current = recognition;
       recognition.start();
@@ -275,7 +497,7 @@ export const DocumentChat = ({
     }
   };
 
-  // Text-to-Speech (Read Aloud) Handler
+  // TTS Read Aloud
   const toggleTTS = (msgId, text) => {
     if (!window.speechSynthesis) {
       alert('Text-to-Speech is not supported in this browser.');
@@ -291,58 +513,42 @@ export const DocumentChat = ({
     window.speechSynthesis.cancel();
     setSpeakingMsgId(msgId);
 
-    // Strip citation brackets e.g. [Page 2] for cleaner audio reading
     const cleanSpeech = text
       .replace(/\[(?:Page\s*)?\d+(?:,\s*\d+)*\]/gi, '')
       .replace(/[*_#`]/g, '')
       .trim();
 
     const utterance = new SpeechSynthesisUtterance(cleanSpeech);
-    const langCodes = {
-      en: 'en-US',
-      gu: 'gu-IN',
-      hi: 'hi-IN',
-    };
+    const langCodes = { en: 'en-US', gu: 'gu-IN', hi: 'hi-IN' };
     utterance.lang = langCodes[language] || 'en-US';
     utterance.rate = 1.0;
-
     utterance.onend = () => setSpeakingMsgId(null);
     utterance.onerror = () => setSpeakingMsgId(null);
 
     window.speechSynthesis.speak(utterance);
   };
 
-  // Copy Message to Clipboard
+  // Copy Message
   const handleCopyMessage = (msgId, text) => {
     navigator.clipboard.writeText(text);
     setCopiedId(msgId);
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // Open PDF Viewer Modal and navigate to the requested page
+  // Citation Modal Opener
   const handleOpenCitation = (pageNum, msg) => {
-    // Normalize page number: enforce 1-based indexing
     const normalizedPage = Math.max(1, parseInt(pageNum, 10) || 1);
+    const matchedChunk = msg?.relevantChunks?.find((c) => c.pageNumber === normalizedPage);
 
-    // Find matching chunk from message.relevantChunks if available
-    const matchedChunk = msg?.relevantChunks?.find(
-      (c) => c.pageNumber === normalizedPage
-    );
-
-    // Identify target document (support multi-document RAG)
     let targetDoc = null;
     if (matchedChunk?.documentId) {
       targetDoc = userDocs.find((d) => String(d._id) === String(matchedChunk.documentId));
     }
-    if (!targetDoc && activeDoc?._id) {
-      targetDoc = activeDoc;
-    }
+    if (!targetDoc && activeDoc?._id) targetDoc = activeDoc;
     if (!targetDoc && selectedDocIds.length > 0) {
       targetDoc = userDocs.find((d) => selectedDocIds.includes(d._id));
     }
-    if (!targetDoc && userDocs.length > 0) {
-      targetDoc = userDocs[0];
-    }
+    if (!targetDoc && userDocs.length > 0) targetDoc = userDocs[0];
 
     const docName =
       matchedChunk?.documentName ||
@@ -350,33 +556,27 @@ export const DocumentChat = ({
       activeDoc?.originalName ||
       'Document';
 
-    // Resolve full PDF URL
-    const rawUrl =
-      matchedChunk?.fileUrl ||
-      targetDoc?.fileUrl ||
-      activeDoc?.fileUrl ||
-      '';
+    let rawFileUrl = matchedChunk?.fileUrl || targetDoc?.fileUrl || activeDoc?.fileUrl;
+    let fullPdfUrl = '';
+    if (rawFileUrl) {
+      fullPdfUrl = rawFileUrl.startsWith('http')
+        ? rawFileUrl
+        : `http://localhost:5000${rawFileUrl}`;
+    }
 
-    const apiOrigin = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
-    const fullPdfUrl = rawUrl
-      ? rawUrl.startsWith('http')
-        ? rawUrl
-        : `${apiOrigin}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`
-      : '';
-
-    const totalPages = Math.max(
-      normalizedPage,
-      targetDoc?.pageCount || activeDoc?.pageCount || 1
-    );
+    const totalPages =
+      matchedChunk?.pageCount ||
+      targetDoc?.pageCount ||
+      activeDoc?.pageCount ||
+      normalizedPage;
 
     const snippetText =
       matchedChunk?.snippet ||
-      matchedChunk?.text ||
-      `Excerpt from Page ${normalizedPage} of ${docName}. Grounded source citation verified by Docify AI.`;
+      `Source reference extracted from Page ${normalizedPage} of "${docName}".`;
 
     setActivePdfModal({
-      documentId: targetDoc?._id || matchedChunk?.documentId || activeDoc?._id,
       documentName: docName,
+      documentId: matchedChunk?.documentId || targetDoc?._id,
       fileUrl: fullPdfUrl,
       pageNumber: normalizedPage,
       totalPages,
@@ -390,7 +590,6 @@ export const DocumentChat = ({
     }
   };
 
-  // Navigate to previous, next, or specific page inside PDF Viewer
   const handleViewerPageChange = (newPage) => {
     if (!activePdfModal) return;
     const validatedPage = Math.max(1, Math.min(activePdfModal.totalPages, parseInt(newPage, 10) || 1));
@@ -400,47 +599,10 @@ export const DocumentChat = ({
     }));
   };
 
-  // Render assistant message with clickable [Page X] badges inline
-  const renderMessageContent = (msg) => {
-    if (!msg.text) return null;
-    if (msg.sender === 'user') return msg.text;
-
-    const citationPattern = /(\[(?:Page|Pages)?\s*\d+(?:[,\s&and]+\d+)*\])/gi;
-    const parts = msg.text.split(citationPattern);
-
-    return parts.map((part, index) => {
-      if (citationPattern.test(part)) {
-        const numbers = (part.match(/\d+/g) || [])
-          .map((n) => parseInt(n, 10))
-          .filter((n) => !isNaN(n) && n > 0);
-
-        if (numbers.length === 0) return <span key={index}>{part}</span>;
-
-        return (
-          <span key={index} className="inline-flex items-center gap-1 mx-0.5">
-            {numbers.map((num) => (
-              <button
-                key={num}
-                type="button"
-                onClick={() => handleOpenCitation(num, msg)}
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md font-mono text-[11px] font-bold border transition-all cursor-pointer shadow-sm align-baseline bg-brand-red/10 dark:bg-brand-red/25 border-brand-red/30 text-brand-red dark:text-brand-redBright hover:bg-brand-red hover:text-white dark:hover:bg-brand-red dark:hover:text-white"
-                title={`Open Page ${num} in PDF Viewer`}
-              >
-                <BookOpen className="w-2.5 h-2.5" />
-                <span>[Page {num}]</span>
-              </button>
-            ))}
-          </span>
-        );
-      }
-      return <span key={index}>{part}</span>;
-    });
-  };
-
   const isIndic = language === 'gu' || language === 'hi';
 
   return (
-    <div className="flex flex-col h-[740px] rounded-2xl bg-light-surface/40 dark:bg-dark-surface/40 border border-light-border dark:border-dark-border overflow-hidden">
+    <div className="flex flex-col h-[750px] rounded-2xl bg-light-surface/40 dark:bg-dark-surface/40 border border-light-border dark:border-dark-border overflow-hidden shadow-soft">
       {/* 1. TOP HEADER / CONTROL BAR */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-light-surface dark:bg-dark-surface border-b border-light-border dark:border-dark-border shrink-0">
         <div className="flex items-center gap-3">
@@ -448,28 +610,26 @@ export const DocumentChat = ({
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-heading font-bold text-sm sm:text-base text-light-heading dark:text-dark-heading">
-                Chat with Document (RAG)
-              </h3>
-              <Badge variant="brand" size="sm" className="text-[10px]">
-                Grounding Active
-              </Badge>
-            </div>
-            <p className="text-xs text-light-body dark:text-dark-body flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-              Answers strictly sourced from document with page citations
+            <h3 className="font-heading font-bold text-sm text-light-heading dark:text-dark-heading flex items-center gap-2">
+              <span>DocuMind Conversational AI</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                ChatGPT Mode
+              </span>
+            </h3>
+            <p className="text-[11px] text-light-body dark:text-dark-body">
+              Multi-turn memory • Grounded [Page X] citations • University exam answers
             </p>
           </div>
         </div>
 
-        {/* Right Header Controls: Multi-Doc Selector, Language Toggle, Clear */}
+        {/* Right Controls: Multi-doc selector, Language toggle, Clear */}
         <div className="flex items-center gap-2">
-          {/* Active Documents Dropdown */}
+          {/* Multi-Doc Selector Dropdown */}
           <div className="relative" ref={selectorDropdownRef}>
             <button
+              type="button"
               onClick={() => setShowDocSelector(!showDocSelector)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border text-xs font-semibold text-light-heading dark:text-dark-heading hover:border-brand-red/50 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface text-xs font-semibold text-light-heading dark:text-dark-heading hover:border-brand-orange transition-all"
             >
               <Files className="w-3.5 h-3.5 text-brand-orange" />
               <span>
@@ -477,76 +637,65 @@ export const DocumentChat = ({
                   ? userDocs.find((d) => d._id === selectedDocIds[0])?.originalName?.slice(0, 18) || '1 Document'
                   : `${selectedDocIds.length} Documents Selected`}
               </span>
-              <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+              <ChevronDown className="w-3.5 h-3.5" />
             </button>
 
-            {/* Dropdown Menu */}
-            <AnimatePresence>
-              {showDocSelector && (
-                <motion.div
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 6 }}
-                  className="absolute right-0 mt-2 w-72 max-h-80 overflow-y-auto p-2 rounded-2xl bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border shadow-xl z-30 space-y-1"
-                >
-                  <div className="flex items-center justify-between px-2 py-1.5 text-[11px] font-semibold text-light-body dark:text-dark-body border-b border-light-border dark:border-dark-border mb-1">
-                    <span>Select Documents to Query</span>
-                    <button
-                      onClick={handleSelectAllDocs}
-                      className="text-brand-red dark:text-brand-redBright hover:underline"
-                    >
-                      {selectedDocIds.length === userDocs.length ? 'Reset' : 'Select All'}
-                    </button>
-                  </div>
+            {showDocSelector && (
+              <div className="absolute right-0 top-full mt-2 w-72 max-h-72 overflow-y-auto p-2 rounded-2xl bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border shadow-xl z-30 space-y-1">
+                <div className="flex items-center justify-between pb-2 mb-1 border-b border-light-border dark:border-dark-border px-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-light-body dark:text-dark-body">
+                    Select Context Docs
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleSelectAllDocs}
+                    className="text-[11px] font-semibold text-brand-orange hover:underline"
+                  >
+                    {selectedDocIds.length === userDocs.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
 
-                  {userDocs.length === 0 ? (
-                    <p className="p-3 text-center text-xs text-light-body dark:text-dark-body">
-                      No uploaded documents found.
-                    </p>
-                  ) : (
-                    userDocs.map((doc) => {
-                      const isSelected = selectedDocIds.includes(doc._id);
-                      return (
-                        <label
-                          key={doc._id}
-                          className={`flex items-center gap-2.5 p-2 rounded-xl text-xs cursor-pointer transition-colors ${
-                            isSelected
-                              ? 'bg-brand-red/10 dark:bg-brand-red/20 text-light-heading dark:text-dark-heading font-medium'
-                              : 'hover:bg-light-bg dark:hover:bg-dark-bg text-light-body dark:text-dark-body'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => toggleDocSelection(doc._id)}
-                            className="rounded border-light-border dark:border-dark-border text-brand-red focus:ring-brand-red w-4 h-4"
-                          />
-                          <FileText className="w-3.5 h-3.5 text-brand-orange shrink-0" />
-                          <span className="truncate flex-1" title={doc.originalName}>
-                            {doc.originalName}
-                          </span>
-                        </label>
-                      );
-                    })
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
+                {userDocs.map((doc) => {
+                  const isChecked = selectedDocIds.includes(doc._id);
+                  return (
+                    <div
+                      key={doc._id}
+                      onClick={() => toggleDocSelection(doc._id)}
+                      className={`flex items-center gap-2 p-2 rounded-xl text-xs cursor-pointer transition-colors ${
+                        isChecked
+                          ? 'bg-brand-red/10 text-brand-red dark:text-brand-redBright font-semibold'
+                          : 'text-light-body dark:text-dark-body hover:bg-light-bg dark:hover:bg-dark-bg'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {}}
+                        className="rounded text-brand-red focus:ring-brand-red"
+                      />
+                      <FileText className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate flex-1">{doc.originalName}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {/* Multilingual Selector: EN / ગુ / हिં */}
-          <div className="flex items-center p-1 rounded-xl bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border text-xs font-semibold">
+          {/* Language Toggle */}
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border text-xs">
             {[
-              { id: 'en', label: 'EN' },
-              { id: 'gu', label: 'ગુ' },
-              { id: 'hi', label: 'हिं' },
+              { code: 'en', label: 'EN' },
+              { code: 'gu', label: 'ગુજ' },
+              { code: 'hi', label: 'हिन्' },
             ].map((lang) => (
               <button
-                key={lang.id}
-                onClick={() => setLanguage(lang.id)}
-                className={`px-2.5 py-1 rounded-lg transition-colors ${
-                  language === lang.id
-                    ? 'bg-brand-gradient text-white shadow-sm'
+                key={lang.code}
+                type="button"
+                onClick={() => setLanguage(lang.code)}
+                className={`px-2 py-0.5 rounded-lg font-bold transition-all ${
+                  language === lang.code
+                    ? 'bg-brand-red text-white shadow-xs'
                     : 'text-light-body dark:text-dark-body hover:text-light-heading dark:hover:text-dark-heading'
                 }`}
               >
@@ -555,20 +704,21 @@ export const DocumentChat = ({
             ))}
           </div>
 
-          {/* Clear Chat History */}
+          {/* Clear Chat */}
           {messages.length > 0 && (
             <Button
               variant="ghost"
               size="sm"
-              leftIcon={RefreshCw}
               onClick={() => {
-                if (window.confirm('Clear current chat conversation?')) {
+                if (window.confirm('Clear conversation history?')) {
                   setMessages([]);
                 }
               }}
-              title="Clear Chat"
+              title="Clear Conversation"
               className="text-xs px-2"
-            />
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </Button>
           )}
         </div>
       </div>
@@ -576,7 +726,7 @@ export const DocumentChat = ({
       {/* 2. CHAT STREAM / MESSAGES CONTAINER */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center max-w-lg mx-auto space-y-5 py-8">
+          <div className="flex flex-col items-center justify-center h-full text-center max-w-lg mx-auto space-y-5 py-6">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-red/10 to-brand-orange/10 border border-brand-red/20 flex items-center justify-center text-brand-red dark:text-brand-redBright shadow-glow-red">
               <Bot className="w-8 h-8" />
             </div>
@@ -584,34 +734,35 @@ export const DocumentChat = ({
             <div className="space-y-1.5">
               <h4 className="font-heading font-bold text-base sm:text-lg text-light-heading dark:text-dark-heading">
                 {language === 'gu'
-                  ? 'દસ્તાવેજ સાથે વાતચીત કરો (RAG એન્જિન)'
+                  ? 'દસ્તાવેજ સાથે બુદ્ધિશાળી સંવાદ (ChatGPT Intelligence)'
                   : language === 'hi'
-                  ? 'दस्तावेज़ के साथ बातचीत करें (RAG इंजन)'
-                  : 'Ask Questions Grounded in Your Documents'}
+                  ? 'दस्तावेज़ के साथ बुद्धिमान बातचीत (ChatGPT Intelligence)'
+                  : 'Ask Anything Grounded in Your Documents'}
               </h4>
               <p className="text-xs sm:text-sm text-light-body dark:text-dark-body">
                 {language === 'gu'
-                  ? 'તમારા દસ્તાવેજમાંથી સીધા જવાબો મેળવો, જેમાં પેજ નંબર ટાંકવામાં આવશે.'
+                  ? 'પરીક્ષા જવાબો, કોડિંગ ઉદાહરણો અને ચોક્કસ [Page X] સંદર્ભ સાથે કુદરતી વાતચીત કરો.'
                   : language === 'hi'
-                  ? 'अपने दस्तावेज़ से सीधे उत्तर प्राप्त करें, जिसमें पृष्ठ संख्या उद्धृत की जाएगी।'
-                  : 'Docify AI answers strictly from your uploaded files and cites exact [Page X] references.'}
+                  ? 'परीक्षा उत्तर, कोडिंग उदाहरण और सटीक [Page X] संदर्भ के साथ स्वाभाविक बातचीत करें।'
+                  : 'Get university exam answers, code examples, and step-by-step solutions with exact [Page X] citations.'}
               </p>
             </div>
 
-            {/* Quick Suggested Prompts */}
+            {/* Quick Action Pills on Welcome */}
             <div className="w-full space-y-2 pt-2 text-left">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-light-body dark:text-dark-body">
-                {language === 'gu' ? 'સૂચવેલા પ્રશ્નો:' : language === 'hi' ? 'सुझाए गए प्रश्न:' : 'Suggested Prompts:'}
+                Quick Prompts:
               </p>
-              <div className="grid grid-cols-1 gap-2">
-                {(suggestedPrompts[language] || suggestedPrompts.en).map((prompt, idx) => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {quickActionPills.slice(0, 4).map((pill, idx) => (
                   <button
                     key={idx}
-                    onClick={() => handleSendMessage(prompt)}
+                    type="button"
+                    onClick={() => handleSendMessage(pill.prompt)}
                     className="flex items-center gap-2 p-2.5 rounded-xl bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border text-xs text-light-heading dark:text-dark-heading hover:border-brand-red/60 hover:bg-light-bg dark:hover:bg-dark-bg transition-all text-left group"
                   >
                     <HelpCircle className="w-3.5 h-3.5 text-brand-orange group-hover:scale-110 transition-transform shrink-0" />
-                    <span className={`truncate ${isIndic ? 'indic-text' : ''}`}>{prompt}</span>
+                    <span className="truncate">{pill.label}</span>
                   </button>
                 ))}
               </div>
@@ -625,7 +776,7 @@ export const DocumentChat = ({
             return (
               <motion.div
                 key={msg.id}
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
               >
@@ -636,25 +787,25 @@ export const DocumentChat = ({
                 )}
 
                 <div
-                  className={`max-w-[85%] sm:max-w-[78%] rounded-2xl p-4 shadow-sm space-y-2.5 ${
+                  className={`max-w-[85%] sm:max-w-[80%] rounded-2xl p-4 shadow-sm space-y-2.5 ${
                     isUser
                       ? 'bg-gradient-to-r from-red-600 to-orange-500 text-white rounded-tr-none'
                       : 'bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border text-light-heading dark:text-dark-heading rounded-tl-none'
                   }`}
                 >
                   {/* Message Content */}
-                  <div
-                    className={`text-xs sm:text-sm leading-relaxed ${
-                      isIndic ? 'indic-text' : ''
-                    }`}
-                  >
-                    {renderMessageContent(msg)}
+                  <div className={`text-xs sm:text-sm leading-relaxed ${isIndic ? 'indic-text' : ''}`}>
+                    {isUser ? (
+                      <p className="whitespace-pre-wrap">{msg.text}</p>
+                    ) : (
+                      renderChatMarkdown(msg.text, handleOpenCitation, msg)
+                    )}
                   </div>
 
-                  {/* Assistant Citations & Action Pills */}
+                  {/* Assistant Citations & Action Controls */}
                   {!isUser && (
                     <div className="pt-2 border-t border-light-border/60 dark:border-dark-border/60 flex flex-wrap items-center justify-between gap-2 text-xs">
-                      {/* Source Page Citation Badges */}
+                      {/* Source Citation Badges */}
                       <div className="flex flex-wrap items-center gap-1.5">
                         {msg.citedPages && msg.citedPages.length > 0 ? (
                           <>
@@ -664,9 +815,10 @@ export const DocumentChat = ({
                             {msg.citedPages.map((page) => (
                               <button
                                 key={page}
+                                type="button"
                                 onClick={() => handleOpenCitation(page, msg)}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-brand-red/10 dark:bg-brand-red/20 text-brand-red dark:text-brand-redBright hover:bg-brand-red hover:text-white dark:hover:bg-brand-red dark:hover:text-white transition-colors text-[11px] font-semibold border border-brand-red/20 cursor-pointer"
-                                title={`Navigate to Page ${page} in PDF Viewer`}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-brand-red/10 dark:bg-brand-red/20 text-brand-red dark:text-brand-redBright hover:bg-brand-red hover:text-white transition-colors text-[11px] font-semibold border border-brand-red/20 cursor-pointer"
+                                title={`Open Page ${page} in PDF Viewer`}
                               >
                                 <BookOpen className="w-3 h-3" />
                                 <span>[Page {page}]</span>
@@ -683,6 +835,7 @@ export const DocumentChat = ({
                       {/* Controls: Audio Read Aloud & Copy */}
                       <div className="flex items-center gap-1">
                         <button
+                          type="button"
                           onClick={() => toggleTTS(msg.id, msg.text)}
                           className={`p-1.5 rounded-lg transition-colors ${
                             isSpeakingThis
@@ -691,14 +844,11 @@ export const DocumentChat = ({
                           }`}
                           title={isSpeakingThis ? 'Stop Reading' : 'Read aloud (TTS)'}
                         >
-                          {isSpeakingThis ? (
-                            <VolumeX className="w-3.5 h-3.5" />
-                          ) : (
-                            <Volume2 className="w-3.5 h-3.5" />
-                          )}
+                          {isSpeakingThis ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
                         </button>
 
                         <button
+                          type="button"
                           onClick={() => handleCopyMessage(msg.id, msg.text)}
                           className="p-1.5 rounded-lg hover:bg-light-bg dark:hover:bg-dark-bg text-light-body dark:text-dark-body transition-colors"
                           title="Copy Answer"
@@ -713,13 +863,43 @@ export const DocumentChat = ({
                     </div>
                   )}
 
-                  {/* Timestamp */}
-                  <div
-                    className={`text-[10px] text-right ${
-                      isUser ? 'text-white/70' : 'text-light-body dark:text-dark-body'
-                    }`}
-                  >
-                    {msg.timestamp}
+                  {/* Follow-up Question Suggestions */}
+                  {!isUser && msg.followUpSuggestions && msg.followUpSuggestions.length > 0 && (
+                    <div className="pt-2 border-t border-light-border/40 dark:border-dark-border/40 space-y-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-light-muted dark:text-dark-muted flex items-center gap-1">
+                        <Lightbulb className="w-3 h-3 text-amber-500" />
+                        Suggested Next Questions:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {msg.followUpSuggestions.map((sug, sIdx) => (
+                          <button
+                            key={sIdx}
+                            type="button"
+                            onClick={() => handleSendMessage(sug)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border text-light-heading dark:text-dark-heading hover:border-brand-orange hover:text-brand-orange transition-all text-left"
+                          >
+                            <span>{sug}</span>
+                            <ArrowRight className="w-3 h-3 opacity-60" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* User Message Edit & Timestamp */}
+                  <div className={`flex items-center justify-between text-[10px] pt-1 ${isUser ? 'text-white/80' : 'text-light-body/80 dark:text-dark-body/80'}`}>
+                    {isUser && (
+                      <button
+                        type="button"
+                        onClick={() => handleEditMessage(msg.text)}
+                        className="hover:underline flex items-center gap-1"
+                        title="Edit and resend"
+                      >
+                        <Edit2 className="w-2.5 h-2.5" />
+                        <span>Edit</span>
+                      </button>
+                    )}
+                    <span className="ml-auto">{msg.timestamp}</span>
                   </div>
                 </div>
 
@@ -736,26 +916,29 @@ export const DocumentChat = ({
         {/* Loading / Thinking Indicator */}
         {isLoading && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex gap-3 justify-start"
           >
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-red to-brand-orange flex items-center justify-center text-white shrink-0 shadow-sm">
               <Sparkles className="w-4 h-4 animate-spin" />
             </div>
-            <div className="p-4 rounded-2xl rounded-tl-none bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border text-xs text-light-body dark:text-dark-body flex items-center gap-2">
+            <div className="p-4 rounded-2xl rounded-tl-none bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border text-xs text-light-body dark:text-dark-body flex items-center gap-3">
               <span className="flex gap-1">
                 <span className="w-2 h-2 rounded-full bg-brand-red animate-bounce" />
                 <span className="w-2 h-2 rounded-full bg-brand-orange animate-bounce [animation-delay:0.2s]" />
                 <span className="w-2 h-2 rounded-full bg-accent-light animate-bounce [animation-delay:0.4s]" />
               </span>
-              <span>
-                {language === 'gu'
-                  ? 'દસ્તાવેજમાંથી માહિતી શોધી રહ્યાં છીએ...'
-                  : language === 'hi'
-                  ? 'दस्तावेज़ से जानकारी खोजी जा रही है...'
-                  : 'Retrieving relevant excerpts and generating grounded answer...'}
-              </span>
+              <span>Thinking & formulating ChatGPT-level response...</span>
+
+              <button
+                type="button"
+                onClick={handleStopGenerating}
+                className="ml-2 flex items-center gap-1 px-2 py-0.5 rounded-md bg-status-error/10 text-status-error text-[11px] font-bold hover:bg-status-error hover:text-white transition-colors"
+              >
+                <Square className="w-3 h-3 fill-current" />
+                <span>Stop</span>
+              </button>
             </div>
           </motion.div>
         )}
@@ -763,7 +946,26 @@ export const DocumentChat = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 3. INPUT BAR WITH STT, LANGUAGE & AUTO-RESIZE */}
+      {/* Quick Action Prompt Bar */}
+      <div className="px-4 py-2 border-t border-light-border/40 dark:border-dark-border/40 bg-light-surface/60 dark:bg-dark-surface/60 overflow-x-auto flex items-center gap-2">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-light-muted dark:text-dark-muted shrink-0 flex items-center gap-1">
+          <Sparkles className="w-3 h-3 text-brand-orange" />
+          Exam Modes:
+        </span>
+        {quickActionPills.map((pill, idx) => (
+          <button
+            key={idx}
+            type="button"
+            onClick={() => handleSendMessage(pill.prompt)}
+            disabled={isLoading}
+            className="whitespace-nowrap px-2.5 py-1 rounded-lg text-[11px] font-medium bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border text-light-heading dark:text-dark-heading hover:border-brand-red hover:text-brand-red transition-all shrink-0"
+          >
+            {pill.label}
+          </button>
+        ))}
+      </div>
+
+      {/* 3. INPUT BAR WITH STT, REGENERATE & RE-SEND */}
       <div className="p-3 sm:p-4 bg-light-surface dark:bg-dark-surface border-t border-light-border dark:border-dark-border shrink-0">
         {errorMessage && (
           <div className="mb-2 p-2 rounded-xl bg-status-error/10 border border-status-error/20 text-status-error text-xs flex items-center gap-2">
@@ -782,7 +984,7 @@ export const DocumentChat = ({
           }}
           className="flex items-center gap-2"
         >
-          {/* Speech-to-Text Button */}
+          {/* Voice Input */}
           <button
             type="button"
             onClick={toggleSpeechRecognition}
@@ -796,6 +998,19 @@ export const DocumentChat = ({
             {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
           </button>
 
+          {/* Regenerate Button if messages exist */}
+          {messages.length > 0 && (
+            <button
+              type="button"
+              onClick={handleRegenerate}
+              disabled={isLoading}
+              className="p-2.5 rounded-xl border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-body dark:text-dark-body hover:text-brand-orange hover:border-brand-orange transition-all"
+              title="Regenerate last answer"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          )}
+
           {/* Text Input */}
           <input
             ref={inputRef}
@@ -804,12 +1019,12 @@ export const DocumentChat = ({
             onChange={(e) => setInputQuestion(e.target.value)}
             placeholder={
               isListening
-                ? (language === 'gu' ? 'સાંભળી રહ્યાં છીએ...' : language === 'hi' ? 'सुन रहे हैं...' : 'Listening to speech...')
+                ? 'Listening to speech...'
                 : language === 'gu'
-                ? 'દસ્તાવેજ સંબંધિત તમારો પ્રશ્ન પૂછો...'
+                ? 'દસ્તાવેજ સંબંધિત પ્રશ્ન પૂછો...'
                 : language === 'hi'
-                ? 'दस्तावेज़ से संबंधित अपना प्रश्न पूछें...'
-                : 'Ask a question about this document...'
+                ? 'दस्तावेज़ से संबंधित प्रश्न पूछें...'
+                : 'Ask a question or request an exam answer (2M, 4M, 6M, 10M)...'
             }
             disabled={isLoading}
             className={`flex-1 px-4 py-2.5 rounded-xl bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border text-xs sm:text-sm text-light-heading dark:text-dark-heading placeholder:text-light-body/60 dark:placeholder:text-dark-body/60 focus:outline-none focus:border-brand-red/60 focus:ring-1 focus:ring-brand-red/60 transition-all ${
@@ -817,18 +1032,30 @@ export const DocumentChat = ({
             }`}
           />
 
-          {/* Send Button */}
-          <Button
-            type="submit"
-            variant="primary"
-            size="md"
-            disabled={!inputQuestion.trim() || isLoading}
-            isLoading={isLoading}
-            leftIcon={Send}
-            className="bg-brand-gradient shadow-glow-red px-4 text-xs sm:text-sm"
-          >
-            Ask
-          </Button>
+          {/* Send / Stop Button */}
+          {isLoading ? (
+            <Button
+              type="button"
+              variant="danger"
+              size="md"
+              onClick={handleStopGenerating}
+              leftIcon={Square}
+              className="px-4 text-xs sm:text-sm"
+            >
+              Stop
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              disabled={!inputQuestion.trim()}
+              leftIcon={Send}
+              className="bg-brand-gradient shadow-glow-red px-4 text-xs sm:text-sm"
+            >
+              Ask
+            </Button>
+          )}
         </form>
       </div>
 
@@ -842,9 +1069,8 @@ export const DocumentChat = ({
               exit={{ opacity: 0, scale: 0.96 }}
               className="w-full max-w-5xl h-[90vh] rounded-2xl bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border shadow-2xl flex flex-col overflow-hidden"
             >
-              {/* Modal Header & Navigation Controls */}
+              {/* Header */}
               <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-b border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface shrink-0">
-                {/* Document Title & Page Badge */}
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="p-2 rounded-xl bg-brand-red/10 dark:bg-brand-red/20 text-brand-red dark:text-brand-redBright shrink-0">
                     <BookOpen className="w-4 h-4" />
@@ -864,7 +1090,7 @@ export const DocumentChat = ({
                   </div>
                 </div>
 
-                {/* Page Navigation Controls */}
+                {/* Page Navigation */}
                 <div className="flex items-center gap-1.5 bg-light-bg dark:bg-dark-bg p-1 rounded-xl border border-light-border dark:border-dark-border">
                   <button
                     type="button"
@@ -900,9 +1126,8 @@ export const DocumentChat = ({
                   </button>
                 </div>
 
-                {/* Right Action Controls: Tab View, Open in Tab, Close */}
+                {/* Right controls */}
                 <div className="flex items-center gap-2">
-                  {/* View Mode Toggle */}
                   <div className="flex items-center p-0.5 rounded-lg bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border text-xs">
                     <button
                       type="button"
@@ -928,32 +1153,30 @@ export const DocumentChat = ({
                     </button>
                   </div>
 
-                  {/* Open PDF in New Browser Tab */}
                   {activePdfModal.fileUrl && (
                     <a
                       href={`${activePdfModal.fileUrl}#page=${activePdfModal.pageNumber}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="p-2 rounded-xl text-light-body hover:text-brand-red dark:text-dark-body dark:hover:text-brand-redBright hover:bg-light-bg dark:hover:bg-dark-bg border border-light-border dark:border-dark-border transition-colors"
-                      title="Open full PDF in new browser tab"
+                      title="Open full PDF in new tab"
                     >
                       <ExternalLink className="w-4 h-4" />
                     </a>
                   )}
 
-                  {/* Close Modal Button */}
                   <button
                     type="button"
                     onClick={() => setActivePdfModal(null)}
                     className="p-2 rounded-xl text-light-body hover:text-light-heading dark:text-dark-body dark:hover:text-dark-heading hover:bg-light-bg dark:hover:bg-dark-bg border border-light-border dark:border-dark-border transition-colors"
-                    title="Close PDF Viewer"
+                    title="Close Viewer"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
               </div>
 
-              {/* Modal Body: PDF Viewer vs Grounded Text Excerpt */}
+              {/* Body */}
               <div className="flex-1 min-h-0 relative flex flex-col bg-zinc-900 overflow-hidden">
                 {activePdfModal.viewMode === 'pdf' && activePdfModal.fileUrl ? (
                   <div className="flex-1 w-full h-full relative flex flex-col">
@@ -964,7 +1187,6 @@ export const DocumentChat = ({
                       title={`PDF Page Viewer - ${activePdfModal.documentName} Page ${activePdfModal.pageNumber}`}
                     />
 
-                    {/* Bottom Grounded Snippet Drawer */}
                     {activePdfModal.snippet && (
                       <div className="p-3 bg-light-surface/95 dark:bg-dark-surface/95 border-t border-light-border dark:border-dark-border backdrop-blur-md shrink-0">
                         <div className="max-w-4xl mx-auto flex items-start gap-2.5">

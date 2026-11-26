@@ -1,22 +1,19 @@
 import api from './api';
 
 /**
- * Ask a question across one or multiple documents using RAG
+ * Ask a question across one or multiple documents using conversational ChatGPT-grade RAG
  * @param {string[] | string} documentIds - Single ID or array of document IDs
  * @param {string} question - User question text
  * @param {'en' | 'gu' | 'hi'} [language='en'] - Preferred answer language
- * @returns {Promise<{
- *   success: boolean,
- *   data: {
- *     answer: string,
- *     citedPages: number[],
- *     confidence: number,
- *     relevantChunks: Array<{ chunkId: string, pageNumber: number, documentId: string, documentName: string, snippet: string, score: number }>
- *   },
- *   message: string
- * }>}
+ * @param {Array<Object>} [conversationHistory=[]] - Multi-turn conversation messages
+ * @returns {Promise<any>}
  */
-export const askDocumentQuestion = async (documentIds, question, language = 'en') => {
+export const askDocumentQuestion = async (
+  documentIds,
+  question,
+  language = 'en',
+  conversationHistory = []
+) => {
   const docIdArray = Array.isArray(documentIds)
     ? documentIds
     : [documentIds].filter(Boolean);
@@ -25,6 +22,7 @@ export const askDocumentQuestion = async (documentIds, question, language = 'en'
     documentIds: docIdArray,
     question: question.trim(),
     language,
+    conversationHistory,
   });
 };
 

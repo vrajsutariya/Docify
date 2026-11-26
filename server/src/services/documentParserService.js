@@ -148,8 +148,8 @@ export const parseDocument = async (filePath, mimeType = '', originalName = '') 
           const imgResult = await parser.getImage();
           if (imgResult && Array.isArray(imgResult.pages) && imgResult.pages.length > 0) {
             const ocrPages = [];
-            // Cap scanned PDF OCR to at most 10 pages to ensure timely processing within timeout
-            const maxPagesToOcr = Math.min(imgResult.pages.length, 10);
+            // Cap scanned PDF OCR to at most 5 pages to ensure ultra-fast processing
+            const maxPagesToOcr = Math.min(imgResult.pages.length, 5);
             for (let i = 0; i < maxPagesToOcr; i++) {
               const p = imgResult.pages[i];
               if (p.images && p.images.length > 0) {
@@ -158,8 +158,8 @@ export const parseDocument = async (filePath, mimeType = '', originalName = '') 
                   ((curr.data?.length || 0) > (prev.data?.length || 0) ? curr : prev)
                 );
                 if (mainImg?.dataUrl) {
-                  console.log(`[DocumentParser] OCR scanning page ${i + 1}/${maxPagesToOcr}...`);
-                  const ocrRes = await extractTextFromImage(mainImg.dataUrl, 'eng+guj+hin');
+                  console.log(`[DocumentParser] Fast OCR scanning page ${i + 1}/${maxPagesToOcr}...`);
+                  const ocrRes = await extractTextFromImage(mainImg.dataUrl, 'eng');
                   if (ocrRes.text && ocrRes.text.trim()) {
                     ocrPages.push({
                       pageNumber: i + 1,

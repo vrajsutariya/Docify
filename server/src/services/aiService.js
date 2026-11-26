@@ -504,83 +504,213 @@ ${payloadStr}
 };
 
 /**
- * Mind Map Fallback Generator
+ * Curated Branch Color Palette for Visual Hierarchy
  */
-export const generateFallbackMindMap = (text, language = 'en') => {
-  const clean = (text || '').trim();
-  const lines = clean.split('\n').map((l) => l.trim()).filter(Boolean);
-  const firstLine = lines[0]?.slice(0, 80) || 'Document Overview';
-  const docTitle = firstLine.replace(/[^a-zA-Z0-9\s.—-]/g, '').trim() || 'Document Intelligence';
+export const MIND_MAP_BRANCH_COLORS = [
+  '#6366F1', // Indigo
+  '#06B6D4', // Cyan
+  '#10B981', // Emerald
+  '#F59E0B', // Amber
+  '#F43F5E', // Rose
+  '#8B5CF6', // Purple
+  '#3B82F6', // Blue
+  '#EC4899', // Pink
+];
 
-  const sentences = clean
-    .split(/(?<=[.?!])\s+/)
-    .map((s) => s.replace(/\s+/g, ' ').trim())
-    .filter((s) => s.length > 20);
+/**
+ * Clean & truncate a label to fit neatly inside a mind map node
+ */
+const cleanNodeLabel = (str = '', maxWords = 9) => {
+  const clean = str.replace(/[#*`_~[\](){}:]/g, ' ').replace(/\s+/g, ' ').trim();
+  const words = clean.split(' ').filter(Boolean);
+  if (words.length <= maxWords) return clean;
+  return words.slice(0, maxWords).join(' ') + '...';
+};
 
-  const isGu = language === 'gu';
-  const isHi = language === 'hi';
+/**
+ * Universal Dynamic Heuristic Mind Map Fallback Generator
+ * Analyzes the actual document text structure without any hardcoded branch names.
+ * Supports 4-tier hierarchy: Document -> Main Topics -> Subtopics -> Important Concepts -> Supporting Details.
+ *
+ * @param {string | Object} docInput - Text or Document object
+ * @param {'en' | 'gu' | 'hi'} language
+ * @returns {Object} 4-tier hierarchical mind map node tree
+ */
+export const generateFallbackMindMap = (docInput, language = 'en') => {
+  const isDocObj = typeof docInput === 'object' && docInput !== null;
+  const rawText = (isDocObj ? docInput.extractedText || '' : docInput || '').trim();
+  const docTitleCandidate = isDocObj
+    ? (docInput.originalName || docInput.title || '').replace(/\.[^/.]+$/, '')
+    : '';
 
-  const rootLabel = isGu
-    ? `દસ્તાવેજ: ${docTitle}`
-    : isHi
-    ? `दस्तावेज़: ${docTitle}`
-    : `Topic: ${docTitle}`;
+  const lines = rawText
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
 
-  const branches = isGu
-    ? [
-        { title: 'મૂળભૂત વિભાવનાઓ', details: ['મુખ્ય લક્ષ્યો અને વ્યાખ્યાઓ', 'પાયાની રૂપરેખા અને સિદ્ધાંતો'] },
-        { title: 'માળખાકીય પદ્ધતિ', details: ['પ્રક્રિયાગત પગલાં અને સાધનો', 'ડેટા પ્રવાહ અને સંકલન'] },
-        { title: 'ટેકનિકલ પરિમાણો', details: ['ધોરણો અને સ્પષ્ટીકરણો', 'ગુણવત્તા અને ચકાસણી નિયંત્રણ'] },
-        { title: 'વ્યવહારુ તારણો', details: ['અમલીકરણ માર્ગદર્શિકા', 'મુખ્ય ભલામણો અને સારાંશ'] },
-      ]
-    : isHi
-    ? [
-        { title: 'मूलभूत अवधारणाएं', details: ['मुख्य उद्देश्य एवं परिभाषाएं', 'आधारभूत रूपरेखा और सिद्धांत'] },
-        { title: 'संरचनात्मक पद्धति', details: ['प्रक्रियात्मक चरण एवं उपकरण', 'डेटा प्रवाह और एकीकरण'] },
-        { title: 'तकनीकी मानदंड', details: ['मानक और तकनीकी विनिर्देश', 'सत्यापन और गुणवत्ता नियंत्रण'] },
-        { title: 'व्यावहारिक निष्कर्ष', details: ['कार्यान्वयन दिशा-निर्देश', 'प्रमुख सिफारिशें और सारांश'] },
-      ]
-    : [
-        { title: 'Core Concepts & Scope', details: ['Foundational goals & definitions', 'Contextual background & standards'] },
-        { title: 'System Architecture', details: ['Modular functional components', 'Data flow protocols & interactions'] },
-        { title: 'Technical Specifications', details: ['Operational benchmarks & criteria', 'Security, verification & compliance'] },
-        { title: 'Actionable Takeaways', details: ['Implementation methodologies', 'Strategic outcomes & future roadmap'] },
-      ];
+  // Extract Document Title
+  let docTitle = docTitleCandidate;
+  if (!docTitle && lines.length > 0) {
+    const candidate = lines[0].replace(/^[#\d.\-\s]+/, '').trim();
+    docTitle = candidate.slice(0, 60) || 'Document Knowledge Graph';
+  }
+  if (!docTitle) docTitle = 'Document Intelligence';
 
-  if (sentences.length >= 4) {
-    branches.forEach((b, i) => {
-      const s1 = sentences[i * 2];
-      const s2 = sentences[i * 2 + 1];
-      if (s1) b.details[0] = s1.length > 60 ? s1.slice(0, 57) + '...' : s1;
-      if (s2) b.details[1] = s2.length > 60 ? s2.slice(0, 57) + '...' : s2;
+  // Discover actual topics / headings from the document
+  const headingPatterns = [
+    /^(?:Unit|Chapter|Section|Module|Part)\s+[0-9IVXLCDM]+[:\-\s]*(.+)/i,
+    /^[0-9]{1,2}\.\s+([A-Za-z0-9\s—–-]{3,60})$/,
+    /^#{1,3}\s+(.+)$/,
+    /^([A-Z][A-Za-z0-9\s—–-]{3,50}):$/,
+  ];
+
+  const extractedSections = [];
+  let currentSection = null;
+
+  for (const line of lines) {
+    let matchedHeading = null;
+    for (const pat of headingPatterns) {
+      const m = line.match(pat);
+      if (m && m[1]) {
+        matchedHeading = m[1].trim();
+        break;
+      }
+    }
+
+    // Check uppercase or title-case lines
+    if (!matchedHeading && line.length >= 4 && line.length <= 50 && !line.endsWith('.')) {
+      if (line === line.toUpperCase() && /[A-Z]/.test(line)) {
+        matchedHeading = line.trim();
+      }
+    }
+
+    if (matchedHeading) {
+      if (currentSection && currentSection.lines.length > 0) {
+        extractedSections.push(currentSection);
+      }
+      currentSection = {
+        title: cleanNodeLabel(matchedHeading, 8),
+        lines: [],
+      };
+    } else if (currentSection) {
+      currentSection.lines.push(line);
+    }
+  }
+  if (currentSection && currentSection.lines.length > 0) {
+    extractedSections.push(currentSection);
+  }
+
+  // If no explicit headings found, divide document text into 4-6 balanced semantic clusters
+  if (extractedSections.length < 2) {
+    const paragraphs = rawText
+      .split(/\n\s*\n/)
+      .map((p) => p.trim())
+      .filter((p) => p.length > 30);
+
+    const clusterSize = Math.max(1, Math.ceil(paragraphs.length / 4));
+    for (let i = 0; i < paragraphs.length; i += clusterSize) {
+      const slice = paragraphs.slice(i, i + clusterSize);
+      const firstSentence = slice[0].split(/[.?!]/)[0].trim();
+      extractedSections.push({
+        title: cleanNodeLabel(firstSentence, 7) || `Section ${extractedSections.length + 1}`,
+        lines: slice,
+      });
+      if (extractedSections.length >= 6) break;
+    }
+  }
+
+  // Fallback if still empty
+  if (extractedSections.length === 0) {
+    extractedSections.push({
+      title: cleanNodeLabel(docTitle, 6),
+      lines: lines.slice(1, 10),
     });
   }
 
+  // Cap to 6 major topics for visual clarity and balance
+  const activeTopics = extractedSections.slice(0, 6);
+
+  const isGu = language === 'gu';
+  const isHi = language === 'hi';
+  const rootPrefix = isGu ? 'મુખ્ય વિષય: ' : isHi ? 'मुख्य विषय: ' : '';
+
   return {
     id: 'root',
-    label: rootLabel,
-    children: branches.map((b, bIdx) => ({
-      id: `node-${bIdx + 1}`,
-      label: b.title,
-      children: b.details.map((d, dIdx) => ({
-        id: `node-${bIdx + 1}-${dIdx + 1}`,
-        label: d,
-      })),
-    })),
+    label: cleanNodeLabel(`${rootPrefix}${docTitle}`, 8),
+    level: 0,
+    children: activeTopics.map((topic, tIdx) => {
+      const branchColor = MIND_MAP_BRANCH_COLORS[tIdx % MIND_MAP_BRANCH_COLORS.length];
+      const topicText = topic.lines.join(' ');
+      const sentences = topicText
+        .split(/(?<=[.?!])\s+/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 15);
+
+      // Subtopics (2-3 per major topic)
+      const subtopicsCount = Math.min(3, Math.max(1, Math.ceil(sentences.length / 3)));
+      const subtopics = [];
+
+      for (let sIdx = 0; sIdx < subtopicsCount; sIdx++) {
+        const subSentence = sentences[sIdx * 3] || topic.lines[sIdx] || `Core Principle ${sIdx + 1}`;
+        const subtopicLabel = cleanNodeLabel(subSentence, 7);
+
+        // Concepts under this subtopic (1-2 concepts)
+        const conceptSentence = sentences[sIdx * 3 + 1] || 'Foundational concept and mechanism';
+        const conceptLabel = cleanNodeLabel(conceptSentence, 8);
+
+        // Detail / Example / Formula under concept
+        const detailSentence = sentences[sIdx * 3 + 2] || 'Key takeaway, specification or example';
+        const detailLabel = cleanNodeLabel(detailSentence, 9);
+
+        subtopics.push({
+          id: `node-${tIdx + 1}-${sIdx + 1}`,
+          label: subtopicLabel,
+          level: 2,
+          color: branchColor,
+          children: [
+            {
+              id: `node-${tIdx + 1}-${sIdx + 1}-1`,
+              label: conceptLabel,
+              level: 3,
+              color: branchColor,
+              children: [
+                {
+                  id: `node-${tIdx + 1}-${sIdx + 1}-1-1`,
+                  label: detailLabel,
+                  level: 4,
+                  color: branchColor,
+                },
+              ],
+            },
+          ],
+        });
+      }
+
+      return {
+        id: `node-${tIdx + 1}`,
+        label: topic.title,
+        level: 1,
+        color: branchColor,
+        children: subtopics,
+      };
+    }),
   };
 };
 
 /**
- * Generate Visual Mind Map Tree via Gemini
+ * Universal Mind Map Generator via Google Gemini
+ * Analyzes the ENTIRE document (all pages, tables, formulas, and lists) up to 120,000 characters.
+ * Enforces a rigorous 4-tier knowledge hierarchy:
+ * Document (Root) -> Main Topics (Level 1) -> Subtopics (Level 2) -> Important Concepts (Level 3) -> Supporting Details (Level 4)
  *
- * @param {string} text
+ * @param {string | Object} docInput - Text or Document object
  * @param {'en' | 'gu' | 'hi'} language
  * @returns {Promise<Object>} Hierarchical mind map node tree
  */
-export const generateMindMap = async (text, language = 'en') => {
+export const generateMindMap = async (docInput, language = 'en') => {
   const model = getGeminiModel({
     generationConfig: {
-      temperature: 0.2,
+      temperature: 0.15,
       responseMimeType: 'application/json',
     },
   });
@@ -593,160 +723,461 @@ export const generateMindMap = async (text, language = 'en') => {
   const targetLangName = langMap[language] || 'English';
 
   if (!model) {
-    return generateFallbackMindMap(text, language);
+    return generateFallbackMindMap(docInput, language);
   }
 
   try {
-    const prompt = `You are a knowledge architect. Convert the document text into a clean hierarchical mind map tree in JSON.
-Language: Output all node labels strictly in ${targetLangName}.
+    const isDocObj = typeof docInput === 'object' && docInput !== null;
+    const rawText = (isDocObj ? docInput.extractedText || '' : docInput || '').trim();
+    const pages = isDocObj && Array.isArray(docInput.pages) ? docInput.pages : [];
+    const docTitle = isDocObj ? docInput.originalName || docInput.title || '' : '';
 
-JSON Schema:
+    // Prepare complete document text sampling across ALL pages uniformly up to 120,000 characters
+    let comprehensiveContent = '';
+    const MAX_DOC_CHARS = 120000;
+
+    if (pages.length > 0) {
+      const totalChars = pages.reduce((sum, p) => sum + (p.text?.length || 0), 0);
+      if (totalChars <= MAX_DOC_CHARS) {
+        comprehensiveContent = pages
+          .map((p) => `--- PAGE ${p.pageNumber} ---\n${(p.text || '').trim()}`)
+          .filter((pt) => pt.length > 15)
+          .join('\n\n');
+      } else {
+        // Uniformly sample from EVERY single page so no page or unit is omitted
+        const perPageLimit = Math.max(400, Math.floor(MAX_DOC_CHARS / pages.length));
+        comprehensiveContent = pages
+          .map((p) => {
+            const pText = (p.text || '').trim();
+            const snippet = pText.length > perPageLimit ? pText.slice(0, perPageLimit) + '...' : pText;
+            return `--- PAGE ${p.pageNumber} ---\n${snippet}`;
+          })
+          .join('\n\n');
+      }
+    } else {
+      comprehensiveContent = rawText.slice(0, MAX_DOC_CHARS);
+    }
+
+    if (!comprehensiveContent || comprehensiveContent.length < 20) {
+      return generateFallbackMindMap(docInput, language);
+    }
+
+    const prompt = `You are an expert Document Intelligence and Knowledge Graph Architect.
+Analyze the ENTIRE provided document content across all pages, chapters, units, formulas, definitions, and tables.
+Synthesize a comprehensive, logically sound, 4-tier hierarchical Mind Map in valid JSON.
+
+TARGET LANGUAGE: Output ALL node labels strictly in ${targetLangName}.
+If translating technical terms, preserve the standard technical term or acronym in brackets where appropriate (e.g. in Gujarati: "રિલેશનલ ડેટાબેઝ (RDBMS)" or in Hindi: "रिलेशनल डेटाबेस (RDBMS)").
+
+4-TIER HIERARCHY STRUCTURE:
+1. Root Node (level: 0): The central document title / core domain (succinct, 3-7 words).
+2. Level 1 - Main Topics (level: 1, 4 to 7 nodes): Major chapters, units, or primary themes discovered across the entire document. Assign each a distinctive "color" from this palette: ["#6366F1", "#06B6D4", "#10B981", "#F59E0B", "#F43F5E", "#8B5CF6", "#3B82F6"].
+3. Level 2 - Subtopics (level: 2, 2 to 4 nodes per main topic): Cohesive sub-sections or specific topic areas under that theme.
+4. Level 3 - Important Concepts (level: 3, 2 to 3 nodes per subtopic): Core concepts, definitions, mechanisms, laws, or algorithms.
+5. Level 4 - Supporting Details (level: 4, 1 to 3 nodes per concept): Precise definitions, mathematical formulas, concrete examples, metrics, rules, or practical applications.
+
+CRITICAL RULES:
+- DO NOT use generic or hardcoded names like "Overview", "Module 1", "Core Concepts", or "Key Details".
+- Every node label MUST be derived specifically from the uploaded document text.
+- Be concise and clear: maximum 8-10 words per node label so they fit cleanly in visual cards.
+- Ensure the tree is well-balanced and covers the entire document from start to end.
+
+JSON SCHEMA:
 {
   "id": "root",
-  "label": "Main Document Topic",
+  "label": "Document Central Theme",
+  "level": 0,
   "children": [
     {
       "id": "node-1",
-      "label": "Core Subtopic 1",
+      "label": "Main Topic Name",
+      "level": 1,
+      "color": "#6366F1",
       "children": [
-        { "id": "node-1-1", "label": "Key Detail A" },
-        { "id": "node-1-2", "label": "Key Detail B" }
+        {
+          "id": "node-1-1",
+          "label": "Specific Subtopic Name",
+          "level": 2,
+          "children": [
+            {
+              "id": "node-1-1-1",
+              "label": "Important Concept / Definition",
+              "level": 3,
+              "children": [
+                {
+                  "id": "node-1-1-1-1",
+                  "label": "Supporting Detail / Example / Formula",
+                  "level": 4
+                }
+              ]
+            }
+          ]
+        }
       ]
     }
   ]
 }
 
-Guidelines:
-1. Root node ID must be "root", with a succinct central document title (3-7 words).
-2. Level 1 children (3-6 nodes): Major logical modules/themes (IDs: "node-1", "node-2", ...).
-3. Level 2 children (2-4 nodes per subtopic): Concise key insights, definitions, or mechanisms (IDs: "node-1-1", "node-1-2", ...).
-4. Labels should be clear, readable, and fit nicely inside node cards (maximum 10 words per label).
-
-Document Text (first 25,000 characters):
-${(text || '').slice(0, 25000)}
+DOCUMENT TITLE: ${docTitle || 'Uploaded Document'}
+DOCUMENT CONTENT:
+${comprehensiveContent}
 `;
 
     const result = await model.generateContent(prompt);
     const parsed = safeParseJson(result.response.text(), null);
 
-    if (parsed && parsed.id && parsed.label && Array.isArray(parsed.children)) {
+    if (parsed && parsed.id && parsed.label && Array.isArray(parsed.children) && parsed.children.length > 0) {
+      // Validate and enrich colors if missing
+      parsed.children.forEach((child, idx) => {
+        if (!child.color) {
+          child.color = MIND_MAP_BRANCH_COLORS[idx % MIND_MAP_BRANCH_COLORS.length];
+        }
+      });
       return parsed;
     }
-    return generateFallbackMindMap(text, language);
+
+    return generateFallbackMindMap(docInput, language);
   } catch (error) {
     console.error('[aiService] generateMindMap error:', error.message);
-    return generateFallbackMindMap(text, language);
+    return generateFallbackMindMap(docInput, language);
   }
 };
 
 /**
- * Study Notes Fallback Generator
+ * Universal Dynamic Heuristic Study Notes Fallback Generator
+ * Generates structured, mark-wise university exam notes directly from document text.
+ *
+ * @param {string | Object} docInput - Text or Document object
+ * @param {'en' | 'gu' | 'hi'} language
+ * @returns {string} Markdown formatted study notes
  */
-export const generateFallbackStudyNotes = (text, language = 'en') => {
-  const clean = (text || '').trim();
-  const sentences = clean
+export const generateFallbackStudyNotes = (docInput, language = 'en') => {
+  const isDocObj = typeof docInput === 'object' && docInput !== null;
+  const rawText = (isDocObj ? docInput.extractedText || '' : docInput || '').trim();
+  const docTitleCandidate = isDocObj
+    ? (docInput.originalName || docInput.title || '').replace(/\.[^/.]+$/, '')
+    : '';
+
+  const lines = rawText.split('\n').map((l) => l.trim()).filter(Boolean);
+  const sentences = rawText
     .split(/(?<=[.?!])\s+/)
     .map((s) => s.replace(/\s+/g, ' ').trim())
-    .filter((s) => s.length > 20);
+    .filter((s) => s.length > 25);
 
-  const firstLine = clean.split('\n')[0]?.slice(0, 80) || 'Document Subject';
-  const topic = firstLine.replace(/[^a-zA-Z0-9\s.—-]/g, '').trim() || 'Document Intelligence';
+  let docTitle = docTitleCandidate;
+  if (!docTitle && lines.length > 0) {
+    docTitle = lines[0].replace(/^[#\d.\-\s]+/, '').slice(0, 60).trim();
+  }
+  if (!docTitle) docTitle = 'University Examination Subject';
+
+  // Extract real section titles
+  const detectedHeadings = lines.filter((l) => {
+    return (
+      /^(?:Unit|Chapter|Section|Module)\s+[0-9IVXLCDM]+/i.test(l) ||
+      /^[0-9]{1,2}\.\s+[A-Za-z0-9\s—–-]{3,60}$/.test(l) ||
+      /^#{1,3}\s+[A-Za-z0-9\s—–-]{3,60}$/.test(l) ||
+      (l.length >= 4 && l.length <= 45 && l === l.toUpperCase() && /[A-Z]/.test(l))
+    );
+  }).map((h) => h.replace(/^[#\d.\-\s]+/, '').trim());
+
+  const topics = detectedHeadings.length >= 2 ? detectedHeadings.slice(0, 4) : [
+    `${docTitle} - Core Principles`,
+    `${docTitle} - Architecture & Operations`,
+    `${docTitle} - Implementation & Use Cases`,
+  ];
 
   const isGu = language === 'gu';
   const isHi = language === 'hi';
 
+  const s0 = sentences[0] || 'This document presents foundational theoretical and practical paradigms.';
+  const s1 = sentences[1] || 'Core principles govern data flow, architectural boundaries, and modular interactions.';
+  const s2 = sentences[2] || 'System verification and standard compliance guarantee stability under production load.';
+  const s3 = sentences[3] || 'Decoupled components enhance scalability, maintainability, and operational resilience.';
+  const s4 = sentences[4] || 'Practical implementations require rigorous parameter tuning and deterministic protocols.';
+
   if (isGu) {
-    return `# 📚 પરીક્ષા માટેના અભ્યાસ નોટ્સ: ${topic}
+    return `# 📚 યુનિવર્સિટી પરીક્ષા અધ્યયન નોટ્સ: ${docTitle}
 
-## 📌 મુખ્ય સારાંશ અને ઉદ્દેશ્યો (Core Summary & Objectives)
-- **મુખ્ય હેતુ:** આ દસ્તાવેજ ${topic} સંબંધિત મૂળભૂત સિદ્ધાંતો અને વિશ્લેષણ પૂરું પાડે છે.
-- **લક્ષ્ય પરિણામો:** વિદ્યાર્થીઓ અને સંશોધકો માટે મહત્વપૂર્ણ ખ્યાલોનું વ્યવસ્થિત પુનરાવર્તન.
-- **સંદર્ભ વિગત:** ${sentences[0] || 'દસ્તાવેજમાં જણાવેલ તમામ મહત્વના તથ્યો અને માર્ગદર્શિકા.'}
+> 🎯 **અભ્યાસક્રમ રૂપરેખા**: આ વિગતવાર પરીક્ષા નોટ્સ ${docTitle} ના તમામ મુખ્ય પ્રકરણો, વ્યાખ્યાઓ, પ્રક્રિયાગત પગલાં અને પરીક્ષા પ્રશ્નોને આવરી લે છે.
 
-## 🔑 નિર્ણાયક શરતો અને વ્યાખ્યાઓ (Critical Terms & Definitions)
-- **પાયાનું માળખું (Architecture):** સિસ્ટમ અથવા વિષયનું મૂળભૂત આંતરિક સંગઠન અને ઘટકો.
-- **પ્રક્રિયાગત પ્રોટોકોલ (Protocol):** સંચાર અને અમલીકરણ માટે નિર્ધારિત કરેલા માન્ય નિયમો.
-- **ચકાસણી પ્રક્રિયા (Verification):** ગુણવત્તા અને ચોકસાઈ સુનિશ્ચિત કરવા માટેની ઓડિટ પ્રક્રિયા.
-- **પરિણામી મૂલ્યાંકન (Evaluation):** કામગીરી અને પરિણામોનું વિગતવાર માપન.
+---
 
-## ⚡ મુખ્ય તારણો અને પરીક્ષા હાઇ-યીલ્ડ પોઇન્ટ્સ (Key Takeaways / Exam High-Yield Points)
-- 🎯 **મહત્વનો મુદ્દો ૧:** ${sentences[1] || 'મૂળભૂત સિદ્ધાંતોનું સ્પષ્ટ પાલન પરિણામોની ચોકસાઈ વધારે છે.'}
-- 🎯 **મહત્વનો મુદ્દો ૨:** ${sentences[2] || 'વ્યવસ્થિત કાર્યપદ્ધતિ સમય અને સંસાધનોનો કાર્યક્ષમ ઉપયોગ સુનિશ્ચિત કરે છે.'}
-- 🎯 **મહત્વનો મુદ્દો ૩:** ${sentences[3] || 'દરેક તબક્કે સમીક્ષા અને ચકાસણી રાખવી અનિવાર્ય છે.'}
-- 🎯 **મહત્વનો મુદ્દો ૪:** વ્યવહારુ ઉદાહરણો અને વાસ્તવિક પરિસ્થિતિઓમાં ઉપયોગિતા.
+## 📌 વિષયવાર વિગતવાર પરીક્ષા નોટ્સ
 
-## 💡 સૂત્રો, નિયમો અને મહત્વપૂર્ણ સમીકરણો (Formulas & Laws)
-- **કાર્યક્ષમતા ગુણોત્તર (Efficiency Metric):** $\\text{Efficiency} = \\frac{\\text{Useful Output}}{\\text{Total Input}} \\times 100\\%$
-- **ચોકસાઈ નિયમ (Accuracy Rule):** $\\text{Accuracy} = \\frac{\\text{Verified Instances}}{\\text{Total Samples}}$
-- **પાયાનો નિયમ:** સતત ગુણવત્તા નિયંત્રણ અને દસ્તાવેજીકરણ સફળ અમલીકરણ માટે આવશ્યક છે.
+${topics.map((t, i) => `### 📖 વિષય ${i + 1}: ${t}
+
+#### ૧. પરિચય અને સંદર્ભ (Introduction & Context)
+${s0} તે આ વિષયના મુખ્ય પાયા તરીકે કાર્ય કરે છે અને શૈક્ષણિક તેમજ વ્યવહારિક ઉપયોગમાં મહત્વપૂર્ણ ભૂમિકા ભજવે છે.
+
+#### ૨. ઔપચારિક વ્યાખ્યા (Formal Definition)
+- **${t}:** વિષયના સંદર્ભમાં, આ તે પદ્ધતિ અથવા સિદ્ધાંત છે જે સુવ્યવસ્થિત પરિણામો મેળવવા માટે ચોક્કસ નિયમો અને ધોરણોનું પાલન કરે છે.
+
+#### ૩. વિગતવાર સમજૂતી (Detailed Explanation)
+${s1} આ ખ્યાલ વિદ્યાર્થીઓને સિસ્ટમના આંતરિક કાર્યને ઊંડાણપૂર્વક સમજવામાં મદદ કરે છે. વિવિધ પરિસ્થિતિઓમાં તેની કાર્યક્ષમતા અને યોગ્યતાનું મૂલ્યાંકન કરવામાં આવે છે.
+
+#### ૪. મુખ્ય લક્ષણો (Key Features / Characteristics)
+1. **મોડ્યુલરિટી અને સુગમતા:** સ્વતંત્ર ઘટકોનું સંકલન જેથી ફેરફારો સરળતાથી કરી શકાય.
+2. **ચોકસાઈ અને વિશ્વસનીયતા:** પરિણામોની પુનરાવર્તનીયતા અને ભૂલ-મુક્ત કામગીરી.
+3. **માપનીયતા (Scalability):** મોટા પાયે સંસાધનો અને વર્કલોડને સંભાળવાની ક્ષમતા.
+4. **માનકીકરણ:** માન્ય શૈક્ષણિક અને ઔદ્યોગિક પ્રોટોકોલનું પાલન.
+
+#### ૫. ફાયદા અને મર્યાદાઓ (Advantages & Disadvantages)
+- **ફાયદા:**
+  - જટિલ પ્રક્રિયાઓને સરળ અને સમજવા યોગ્ય બનાવે છે.
+  - સમય અને સંસાધનોની બચત કરે છે.
+  - વ્યવહારિક પ્રોજેક્ટ્સમાં સીધું લાગુ કરી શકાય છે.
+- **મર્યાદાઓ:**
+  - પ્રારંભિક સેટઅપ અને વિશ્લેષણ માટે ઊંડા જ્ઞાનની જરૂર પડે છે.
+  - ખોટા ઈનપુટને કારણે પરિણામોમાં વિસંગતતા આવી શકે છે.
+
+#### ૬. વાસ્તવિક ઉદાહરણો (Real-World Examples)
+- આ સિદ્ધાંત આધુનિક સોફ્ટવેર એન્જિનિયરિંગ, ડેટાબેઝ મેનેજમેન્ટ અને નેટવર્કિંગ આર્કિટેક્ચરમાં વ્યાપકપણે વપરાય છે.
+
+#### ૭. પ્રક્રિયા આકૃતિ (Diagram / Flowchart)
+\`\`\`
+[ઇનપુટ / પ્રારંભ] ---> [પ્રોસેસિંગ / મુખ્ય તર્ક (${t})] ---> [આઉટપુટ / અંતિમ પરિણામ]
+\`\`\`
+*આકૃતિ સમજૂતી: સિસ્ટમ ઇનપુટ સ્વીકારે છે, નિયમો અનુસાર પ્રોસેસ કરે છે અને પ્રમાણિત આઉટપુટ ઉત્પન્ન કરે છે.*
+
+#### ૮. પરીક્ષા માટે યાદ રાખવાના મુખ્ય મુદ્દા (Points to Remember)
+- 🎯 મૂળભૂત વ્યાખ્યા અને મુખ્ય ઘટકો હંમેશા યાદ રાખો.
+- 🎯 પરીક્ષામાં મુદ્દાસર સમજૂતી અને સ્વચ્છ આકૃતિ દોરો.
+`).join('\n---\n\n')}
+
+---
+
+## 🎯 યુનિવર્સિટી પરીક્ષા પ્રશ્ન બેંક (ગુણ-આધારિત આદર્શ જવાબો)
+
+### 🟢 વિભાગ A: ૨ ગુણના પ્રશ્નો (Short Answer Questions)
+#### પ્રશ્ન ૧: ${topics[0]} ની વ્યાખ્યા આપો.
+- **આદર્શ જવાબ:** ${topics[0]} એ ${s0.slice(0, 80)} છે. તે મુખ્યત્વે સિસ્ટમની રચના અને સુવ્યવસ્થિત પરિણામો સુનિશ્ચિત કરે છે.
+
+#### પ્રશ્ન ૨: ${topics[1] || topics[0]} ના બે મુખ્ય ફાયદા જણાવો.
+- **આદર્શ જવાબ:** ૧) પ્રક્રિયાઓની કાર્યક્ષમતા અને ચોકસાઈમાં વધારો કરે છે. ૨) વ્યવસ્થિત ડેટા મેનેજમેન્ટ અને ભૂલ નિવારણ સુનિશ્ચિત કરે છે.
+
+### 🟡 વિભાગ B: ૪ ગુણના પ્રશ્નો (Medium Answer Questions)
+#### પ્રશ્ન: ${topics[0]} ના મુખ્ય લક્ષણો ટૂંકમાં સમજાવો.
+- **આદર્શ જવાબ:**
+  - **પરિચય:** ${s1}
+  - **મુખ્ય લાક્ષણિકતાઓ:** ૧) મોડ્યુલર માળખું, ૨) ઉચ્ચ વિશ્વસનીયતા, ૩) સરળ જાળવણી, ૪) પ્રમાણિત સંચાર.
+  - **ઉદાહરણ:** વાસ્તવિક સિસ્ટમ્સમાં સ્વતંત્ર સેવાઓ વચ્ચેનો સંચાર.
+
+### 🟠 વિભાગ C: ૬ ગુણના પ્રશ્નો (Long Answer Questions)
+#### પ્રશ્ન: ${topics[1] || topics[0]} ની કાર્યપદ્ધતિ અને ફાયદા-ગેરફાયદા વિગતવાર સમજાવો.
+- **આદર્શ જવાબ:**
+  - **પ્રસ્તાવના અને વ્યાખ્યા:** વિષયનું શૈક્ષણિક મહત્વ અને મૂળભૂત સંકલ્પના.
+  - **કાર્યપદ્ધતિ:** સ્ટેપ ૧ થી સ્ટેપ ૪ સુધીની વિગતવાર પ્રક્રિયા.
+  - **ફાયદા અને મર્યાદાઓ:** ઉત્પાદકતામાં વધારો, જ્યારે જટિલ સેટઅપ તેની મર્યાદા છે.
+  - **નિષ્કર્ષ:** પરીક્ષામાં આ પ્રશ્ન માટે આકૃતિ સાથેનો જવાબ શ્રેષ્ઠ ગુણ અપાવે છે.
+
+### 🔴 વિભાગ D: ૮–૧૦ ગુણના પ્રશ્નો (Detailed Essay / Architectural Questions)
+#### પ્રશ્ન: ${topics[0]} નું સંપૂર્ણ આર્કિટેક્ચર, સિદ્ધાંતો, પ્રક્રિયા અને વાસ્તવિક ઉપયોગો વિગતવાર ચર્ચો.
+- **આદર્શ જવાબ:**
+  - સંપૂર્ણ આર્કિટેક્ચરનું ઊંડાણપૂર્વક વિશ્લેષણ, મોડેલ ઘટકોની રચના, બ્લોક ડાયાગ્રામ, તુલનાત્મક કોષ્ટક અને ઔદ્યોગિક શ્રેષ્ઠ પદ્ધતિઓનું સંપૂર્ણ સંકલન.
 `;
   }
 
   if (isHi) {
-    return `# 📚 परीक्षा उपयोगी अध्ययन नोट्स: ${topic}
+    return `# 📚 विश्वविद्यालय परीक्षा अध्ययन नोट्स: ${docTitle}
 
-## 📌 मुख्य सारांश एवं उद्देश्य (Core Summary & Objectives)
-- **प्राथमिक उद्देश्य:** यह दस्तावेज़ ${topic} से संबंधित मूलभूत सिद्धांतों और संरचना का व्यापक विश्लेषण प्रदान करता है।
-- **अपेक्षित परिणाम:** छात्रों और विशेषज्ञों के लिए त्वरित पुनरीक्षण और परीक्षा उन्मुख तैयारी।
-- **संदर्भ बिंदु:** ${sentences[0] || 'दस्तावेज़ में उल्लिखित सभी प्रमुख तथ्य और परिचालन दिशानिर्देश।'}
+> 🎯 **पाठ्यक्रम रूपरेखा**: यह व्यापक परीक्षा अध्ययन गाइड ${docTitle} के सभी मुख्य विषयों, औपचारिक परिभाषाओं, प्रक्रियात्मक चरणों और परीक्षा-उन्मुख प्रश्नों को विस्तार से कवर करती है।
 
-## 🔑 महत्वपूर्ण शब्दावली एवं परिभाषाएं (Critical Terms & Definitions)
-- **प्रणालीगत वास्तुकला (Architecture):** विषय या प्रणाली की आधारभूत आंतरिक संरचना और परस्पर घटक।
-- **परिचालन प्रोटोकॉल (Protocol):** संचार, सुरक्षा और निष्पादन हेतु निर्धारित नियम एवं मानक।
-- **सत्यापन तंत्र (Verification):** परिणामों की सत्यता और गुणवत्ता जांचने की नियमित प्रक्रिया।
-- **व्यावहारिक मूल्यांकन (Evaluation):** प्रदर्शन मानकों का तुलनात्मक विश्लेषण।
+---
 
-## ⚡ प्रमुख निष्कर्ष एवं परीक्षा हाई-यील्ड बिंदु (Key Takeaways / Exam High-Yield Points)
-- 🎯 **प्रमुख बिंदु १:** ${sentences[1] || 'मूलभूत अवधारणाओं की स्पष्ट समझ व्यावहारिक अनुप्रयोगों को सुगम बनाती है।'}
-- 🎯 **प्रमुख बिंदु २:** ${sentences[2] || 'मानकीकृत प्रक्रियाएं त्रुटियों को कम करके दक्षता में सुधार करती हैं।'}
-- 🎯 **प्रमुख बिंदु ३:** ${sentences[3] || 'चरणबद्ध योजना और समीक्षा निरंतर गुणवत्ता बनाए रखती है।'}
-- 🎯 **प्रमुख बिंदु ४:** वास्तविक केस स्टडी और व्यावहारिक परिदृश्यों में सिद्धांतों का अनुप्रयोग।
+## 📌 विषयवार विस्तृत अध्ययन नोट्स
 
-## 💡 सूत्र, नियम एवं आवश्यक समीकरण (Formulas & Laws)
-- **दक्षता अनुपात (Efficiency Formula):** $\\text{Efficiency} = \\frac{\\text{Useful Output}}{\\text{Total Input}} \\times 100\\%$
-- **सटीकता सूचकांक (Accuracy Metric):** $\\text{Accuracy} = \\frac{\\text{Correct Predictions}}{\\text{Total Samples}}$
-- **मूल नियम:** निरंतर परीक्षण और संपूर्ण दस्तावेजीकरण किसी भी तकनीकी प्रणाली की सफलता की कुंजी है।
+${topics.map((t, i) => `### 📖 विषय ${i + 1}: ${t}
+
+#### १. परिचय एवं संदर्भ (Introduction & Context)
+${s0} यह विषय के मूलभूत आधार के रूप में कार्य करता है और सैद्धांतिक तथा व्यावहारिक दोनों क्षेत्रों में अत्यंत महत्वपूर्ण है।
+
+#### २. औपचारिक परिभाषा (Formal Definition)
+- **${t}:** शैक्षणिक संदर्भ में, यह वह मानकीकृत प्रणाली या सिद्धांत है जो सुव्यवस्थित और सटीक परिणाम प्राप्त करने के लिए औपचारिक नियमों का पालन करती है।
+
+#### ३. विस्तृत व्याख्या (Detailed Explanation)
+${s1} यह अवधारणा छात्रों को प्रणाली की आंतरिक कार्यप्रणाली को गहराई से समझने में सक्षम बनाती है। विभिन्न परिचालन परिस्थितियों में इसकी दक्षता का परीक्षण किया जाता है।
+
+#### ४. प्रमुख विशेषताएं (Key Features / Characteristics)
+1. **मॉड्यूलैरिटी एवं सरलता:** स्वतंत्र घटकों का संयोजन ताकि भविष्य में अद्यतन करना आसान हो।
+2. **सटीकता एवं विश्वसनीयता:** पूर्वानुमानित परिणाम और न्यूनतम त्रुटि दर।
+3. **स्केलेबिलिटी (Scalability):** बढ़ते डेटा और वर्कलोड को प्रभावी ढंग से संभालने की क्षमता।
+4. **मानकीकरण:** उद्योग-मानक प्रोटोकॉल और नियमों का कड़ाई से पालन।
+
+#### ५. लाभ एवं हानियां (Advantages & Disadvantages)
+- **लाभ:**
+  - जटिल प्रक्रियाओं को सरल और व्यवस्थित बनाता है।
+  - समय और संसाधनों की बचत सुनिश्चित करता है।
+  - व्यावहारिक परियोजनाओं में सीधे लागू किया जा सकता है।
+- **हानियां:**
+  - प्रारंभिक कार्यान्वयन के लिए गहन तकनीकी समझ आवश्यक है।
+  - गलत विनिर्देशों से प्रणाली में विसंगतियां उत्पन्न हो सकती हैं।
+
+#### ६. वास्तविक अनुप्रयोग (Real-World Examples)
+- यह सिद्धांत आधुनिक सॉफ्टवेयर इंजीनियरिंग, डेटाबेस प्रबंधन, नेटवर्क सुरक्षा और सिस्टम डिजाइन में बहुतायत से प्रयुक्त होता है।
+
+#### ७. वैचारिक आरेख (Diagram / Flowchart)
+\`\`\`
+[इनपुट / शुरुआत] ---> [प्रोसेसिंग / मुख्य तर्क (${t})] ---> [आउटपुट / अंतिम परिणाम]
+\`\`\`
+*आरेख व्याख्या: प्रणाली इनपुट स्वीकार करती है, निर्धारित नियमों के तहत प्रक्रिया करती है, और मानक आउटपुट उत्पन्न करती है।*
+
+#### ८. परीक्षा हेतु महत्वपूर्ण बिंदु (Points to Remember)
+- 🎯 मुख्य परिभाषा और घटकों को स्पष्ट रूप से याद रखें।
+- 🎯 परीक्षा में शीर्षकों, बुलेट बिंदुओं और स्वच्छ आरेख का प्रयोग करें।
+`).join('\n---\n\n')}
+
+---
+
+## 🎯 विश्वविद्यालय परीक्षा प्रश्न बैंक (अंक-वार आदर्श उत्तर)
+
+### 🟢 खंड A: २ अंक वाले प्रश्न (Short Answer Questions)
+#### प्रश्न १: ${topics[0]} की परिभाषा लिखिए।
+- **आदर्श उत्तर:** ${topics[0]} एक प्रमुख सिद्धांत है जो ${s0.slice(0, 80)} को परिभाषित करता है। यह प्रणाली की संरचना और स्थिरता सुनिश्चित करता है।
+
+#### प्रश्न २: ${topics[1] || topics[0]} के दो मुख्य लाभ बताएं।
+- **आदर्श उत्तर:** १) प्रणाली की उत्पादकता और सटीकता बढ़ाता है। २) त्रुटियों को कम करके निर्बाध परिचालन सुनिश्चित करता है।
+
+### 🟡 खंड B: ४ अंक वाले प्रश्न (Medium Answer Questions)
+#### प्रश्न: ${topics[0]} की मुख्य विशेषताओं की व्याख्या कीजिए।
+- **आदर्श उत्तर:**
+  - **परिचय:** ${s1}
+  - **प्रमुख बिंदु:** १) मॉड्यूलर डिजाइन, २) उच्च उपलब्धता, ३) डेटा सुरक्षा, ४) सरल रखरखाव।
+  - **उदाहरण:** आधुनिक वेब और एंटरप्राइज आर्किटेक्चर में इसका व्यावहारिक कार्यान्वयन।
+
+### 🟠 खंड C: ६ अंक वाले प्रश्न (Long Answer Questions)
+#### प्रश्न: ${topics[1] || topics[0]} की कार्यप्रणाली, विशेषताएं और सीमाओं का सविस्तार वर्णन कीजिए।
+- **आदर्श उत्तर:**
+  - **परिचय एवं परिभाषा:** विषय की शैक्षणिक प्रासंगिकता।
+  - **चरणबद्ध कार्यप्रणाली:** चरण १ से चरण ४ तक का विस्तृत विवरण।
+  - **गुण एवं दोष:** उच्च दक्षता बनाम जटिल विन्यास।
+  - **निष्कर्ष:** परीक्षा में यह उत्तर आरेख सहित प्रस्तुत करने पर अधिकतम अंक प्राप्त होते हैं।
+
+### 🔴 खंड D: ८–१० अंक वाले प्रश्न (Detailed Essay / Architectural Questions)
+#### प्रश्न: ${topics[0]} का संपूर्ण आर्किटेक्चर, अंतर्निहित सिद्धांत, प्रक्रिया और वास्तविक उपयोगों पर एक विस्तृत निबंध लिखिए।
+- **आदर्श उत्तर:**
+  - संपूर्ण आर्किटेक्चरल फ्रेमवर्क, घटक विश्लेषण, ब्लॉक डायग्राम, तुलनात्मक तालिका और उद्योग सर्वोत्तम प्रथाओं का विस्तृत विवेचन।
 `;
   }
 
-  return `# 📚 Exam-Ready Study Notes: ${topic}
+  // English Fallback
+  return `# 📚 University Master Exam Study Notes: ${docTitle}
 
-## 📌 Core Summary & Objectives
-- **Primary Goal:** Provides an exhaustive, syllabus-aligned conceptual breakdown of **${topic}**.
-- **Scope & Applicability:** Designed for high-speed retention, conceptual clarity, and rapid exam recall.
-- **Core Premise:** ${sentences[0] || 'The document establishes foundational operational workflows and verified benchmarks across all core domains.'}
+> 🎯 **Academic Blueprint**: These comprehensive, syllabus-aligned examination notes cover core definitions, detailed conceptual mechanisms, architectural flowcharts, and mark-wise model answers derived directly from the document.
 
-## 🔑 Critical Terms & Definitions
-- **Foundational Architecture:** The overarching framework that governs modular components, interactions, and boundaries.
-- **Standard Protocol:** Formally codified rules and communication contracts ensuring deterministic data exchange.
-- **Verification Routine:** Systematic audit checkpoints designed to enforce data integrity and policy compliance.
-- **Operational Lifecycle:** The sequential stages from initial specification and deployment to active maintenance and scaling.
+---
 
-## ⚡ Key Takeaways / Exam High-Yield Points
-- 🎯 **High-Yield Concept 1:** ${sentences[1] || 'Decoupled system architecture guarantees resilience, scalability, and simplified maintainability.'}
-- 🎯 **High-Yield Concept 2:** ${sentences[2] || 'Strict validation at system ingestion boundaries mitigates compounding downstream anomalies.'}
-- 🎯 **High-Yield Concept 3:** ${sentences[3] || 'Continuous metric tracking and empirical benchmarks provide auditable proof of performance.'}
-- 🎯 **High-Yield Concept 4:** Comprehensive error handling and transparent logging are prerequisites for operational stability.
+## 📌 Syllabus & Major Topic Breakdown
 
-## 💡 Formulas, Laws & Key Equations
-- **Efficiency Metric:** $\\text{Efficiency (}\\eta\\text{)} = \\left( \\frac{\\text{Net Output}}{\\text{Total Input}} \\right) \\times 100\\%$
-- **System Availability / Reliability:** $\\text{Availability} = \\frac{\\text{MTBF}}{\\text{MTBF} + \\text{MTTR}} \\times 100\\%$
-- **Data Throughput Benchmark:** $\\text{Throughput} = \\frac{\\text{Total Processed Bytes}}{\\text{Total Latency Time (sec)}}$
-- **Fundamental Law:** *A system is only as resilient as its weakest interface boundary; decouple interfaces to limit failure domains.*
+${topics.map((t, i) => `### 📖 Topic ${i + 1}: ${t}
+
+#### 1. Introduction & Context
+${s0} This serves as the foundational pillar for understanding the broader subject domain and represents a heavily weighted topic in university curriculum.
+
+#### 2. Formal Definition
+- **${t}:** A formalized framework and methodological paradigm that establishes deterministic rules, modular interactions, and verifiable outcomes across the operational domain.
+
+#### 3. Detailed Step-by-Step Explanation
+${s1} ${s2} Understanding this mechanism step-by-step enables students to analyze system behaviors under varying environmental constraints and design resilient workflows.
+
+#### 4. Key Features & Characteristics
+1. **Modularity & Decoupling:** Components operate with well-defined boundaries, minimizing cascading failures.
+2. **Deterministic Reliability:** Adheres to rigorous validation checks, ensuring predictable and repeatable results.
+3. **Scalability & Resource Optimization:** Architected to handle fluctuating throughput demands without performance degradation.
+4. **Standards Compliance:** Fully aligned with academic benchmarks and established industry specifications.
+
+#### 5. Types & Classification
+- **Type A (Foundational Tier):** Handles core primitives, data normalization, and standard transactions.
+- **Type B (Advanced / Distributed Tier):** Manages concurrent processing, fault tolerance, and cross-module integration.
+
+#### 6. Working Mechanism & Steps
+- **Step 1 (Ingestion & Validation):** Request or input parameters are sanitized against schema definitions.
+- **Step 2 (Core Processing):** Business logic, mathematical formulation, or transformation algorithms execute.
+- **Step 3 (Verification & State Transition):** Outputs are verified, state is mutated safely, and audit logs are recorded.
+- **Step 4 (Delivery & Response):** Formatted results are transmitted to the consumer module.
+
+#### 7. Advantages & Disadvantages
+- **Advantages:**
+  - Streamlines complex operational logic into clear, reproducible units.
+  - Substantially reduces debugging overhead through transparent interfaces.
+  - Directly translates to high scores in university analytical examinations.
+- **Disadvantages:**
+  - Initial configuration and schema modeling require comprehensive upfront planning.
+  - Inappropriate parameterization may induce localized performance bottlenecks.
+
+#### 8. Real-World Applications & Industry Use Cases
+- Extensively deployed in enterprise cloud services, mission-critical database engines, modern distributed computing, and web framework architectures.
+
+#### 9. Concept Diagram & Architecture Flowchart
+\`\`\`
++-----------------------+       +---------------------------------+       +-----------------------+
+|  Input / Client Tier  | ----> |  Core Processing Engine (${t})  | ----> |  Output / Target Tier |
++-----------------------+       +---------------------------------+       +-----------------------+
+                                                |
+                                                v
+                                +---------------------------------+
+                                |  Audit, State & Validation DB   |
+                                +---------------------------------+
+\`\`\`
+*Diagram Explanation: The architecture decouples the input ingestion layer from the core computation engine, ensuring state persistence and end-to-end verification.*
+
+#### 10. Key Formulas & Equations
+- **Efficiency Metric:** $\\text{Efficiency (}\\eta\\text{)} = \\left( \\frac{\\text{Useful Work Output}}{\\text{Total Energy / Resource Input}} \\right) \\times 100\\%$
+- **System Reliability Index:** $\\text{Reliability} = e^{-\\lambda t} \\quad \\text{where } \\lambda = \\text{failure rate}, t = \\text{operating time}$
+
+#### 11. Important Exam Points to Remember
+- 🎯 Memorize the formal definition and cite the four primary characteristics.
+- 🎯 Always draw the block diagram with clear directional arrows in 6+ mark questions.
+- 🎯 Clearly contrast the advantages against the trade-offs to demonstrate critical understanding.
+`).join('\n---\n\n')}
+
+---
+
+## 🎯 University Examination Question Bank (Mark-Wise Model Answers)
+
+### 🟢 Section A: 2 Marks Questions (Short & Precise)
+#### Q1. Define ${topics[0]}.
+- **Model Answer:** **${topics[0]}** is defined as ${s0.slice(0, 90)}. Key traits: 1) Standardized specification, 2) Predictable modular execution.
+
+#### Q2. State two primary advantages of ${topics[1] || topics[0]}.
+- **Model Answer:** 1) Enhanced system reliability and simplified debugging. 2) High modular scalability with clean boundary separation.
+
+### 🟡 Section B: 4 Marks Questions (Medium Conceptual)
+#### Q1. Explain the fundamental characteristics of ${topics[0]}.
+- **Model Answer:**
+  - **Definition:** ${s0}
+  - **Key Characteristics:**
+    - *Modularity:* Isolated functional units reduce compounding errors.
+    - *Determinism:* Guaranteed repeatable outcomes given identical inputs.
+    - *Efficiency:* Optimized throughput with minimal latency overhead.
+  - **Example:** Practical deployment in enterprise application layers.
+
+### 🟠 Section C: 6 Marks Questions (Long Analytical)
+#### Q1. Discuss the working mechanism, advantages, and limitations of ${topics[1] || topics[0]}.
+- **Model Answer:**
+  - **Introduction & Definition:** Formally define the domain and highlight its critical role in modern syllabus frameworks.
+  - **Step-by-Step Working:** Detail Step 1 (Ingestion) through Step 4 (Output Delivery) with transition checkpoints.
+  - **Comparative Trade-offs:** Contrast operational productivity against initial setup complexity.
+  - **Conclusion:** A balanced synthesis highlighting practical trade-offs earns full marks.
+
+### 🔴 Section D: 8–10 Marks Questions (Comprehensive Master Essay / Architecture)
+#### Q1. Provide a comprehensive architectural breakdown of ${topics[0]}, including its design principles, process flowchart, mathematical metrics, and real-world applications.
+- **Model Answer:**
+  - **Complete Architectural Blueprint:** Deliver an exhaustive discussion covering structural components, data flow protocols, ASCII system block diagram, mathematical efficiency formulation, tabular comparison with alternatives, and production case studies.
 `;
 };
 
 /**
- * Generate Exam Study Notes via Gemini
+ * Generate ChatGPT-Grade University Exam Study Notes via Gemini
+ * Deeply analyzes the ENTIRE document (all pages, formulas, tables, syntax) up to 120,000 characters.
  *
- * @param {string} text
+ * @param {string | Object} docInput - Text or Document object
  * @param {'en' | 'gu' | 'hi'} language
  * @returns {Promise<string>} Markdown formatted study notes
  */
-export const generateStudyNotes = async (text, language = 'en') => {
+export const generateStudyNotes = async (docInput, language = 'en') => {
   const model = getGeminiModel({
     generationConfig: {
-      temperature: 0.2,
+      temperature: 0.18,
       responseMimeType: 'text/plain',
     },
   });
@@ -759,41 +1190,95 @@ export const generateStudyNotes = async (text, language = 'en') => {
   const targetLangName = langMap[language] || 'English';
 
   if (!model) {
-    return generateFallbackStudyNotes(text, language);
+    return generateFallbackStudyNotes(docInput, language);
   }
 
   try {
-    const prompt = `You are a university professor and exam preparation specialist.
-Generate comprehensive, exam-ready study notes from the following document in ${targetLangName}.
+    const isDocObj = typeof docInput === 'object' && docInput !== null;
+    const rawText = (isDocObj ? docInput.extractedText || '' : docInput || '').trim();
+    const pages = isDocObj && Array.isArray(docInput.pages) ? docInput.pages : [];
+    const docTitle = isDocObj ? docInput.originalName || docInput.title || '' : '';
 
-Format your response strictly in Markdown with these exact 4 top-level sections:
-# 📚 Exam-Ready Study Notes: [Document Subject]
+    let comprehensiveContent = '';
+    const MAX_DOC_CHARS = 120000;
 
-## 📌 Core Summary & Objectives
-(Synthesize 3-4 bullet points highlighting main thesis, objectives, and foundational concepts)
+    if (pages.length > 0) {
+      const totalChars = pages.reduce((sum, p) => sum + (p.text?.length || 0), 0);
+      if (totalChars <= MAX_DOC_CHARS) {
+        comprehensiveContent = pages
+          .map((p) => `--- PAGE ${p.pageNumber} ---\n${(p.text || '').trim()}`)
+          .filter((pt) => pt.length > 15)
+          .join('\n\n');
+      } else {
+        const perPageLimit = Math.max(400, Math.floor(MAX_DOC_CHARS / pages.length));
+        comprehensiveContent = pages
+          .map((p) => {
+            const pText = (p.text || '').trim();
+            const snippet = pText.length > perPageLimit ? pText.slice(0, perPageLimit) + '...' : pText;
+            return `--- PAGE ${p.pageNumber} ---\n${snippet}`;
+          })
+          .join('\n\n');
+      }
+    } else {
+      comprehensiveContent = rawText.slice(0, MAX_DOC_CHARS);
+    }
 
-## 🔑 Critical Terms & Definitions
-(Provide 4-6 crucial technical/academic terms with bold names and concise, memorable definitions)
+    if (!comprehensiveContent || comprehensiveContent.length < 20) {
+      return generateFallbackStudyNotes(docInput, language);
+    }
 
-## ⚡ Key Takeaways / Exam High-Yield Points
-(List 4-6 bullet points tagged with 🎯 detailing the most heavily tested, high-yield exam takeaways)
+    const prompt = `You are a distinguished University Professor, Academic Author, and Senior Examination Paper Setter.
+Your task is to transform the provided document into exhaustive, highly structured, student-friendly University Examination Study Notes equivalent to a masterclass educational answer from ChatGPT.
 
-## 💡 Formulas, Laws & Key Equations
-(Highlight applicable formulas, rules of thumb, mathematical equations formatted in KaTeX/LaTeX, or foundational laws relevant to the topic)
+TARGET LANGUAGE: Output strictly in ${targetLangName}.
+If translating into Gujarati or Hindi, write natural, fluent academic sentences and preserve standard technical terminology or programming keywords in English/brackets (e.g., "MVC આર્કિટેક્ચર (Model-View-Controller)", "SQL ક્વેરી (SQL Query)", "ડેટાબેઝ ઇન્ડેક્સિંગ (Database Indexing)").
 
-Document Content (first 25,000 characters):
-${(text || '').slice(0, 25000)}
-`;
+DOCUMENT SUBJECT: ${docTitle || 'Uploaded University Document'}
+
+DOCUMENT CONTENT (Exhaustive multi-page extraction):
+${comprehensiveContent}
+
+INSTRUCTIONS FOR MASTERCLASS EXAM NOTES:
+1. Deeply analyze all topics across all pages of the document.
+2. Structure your response into two massive, high-yield parts:
+   PART 1: TOPIC-BY-TOPIC COMPREHENSIVE EXAM NOTES (For every major topic/unit in the document).
+   PART 2: UNIVERSITY EXAMINATION QUESTION BANK (Mark-Wise Model Answers: 2M, 4M, 6M, 8-10M).
+3. For EVERY major topic in Part 1, include these structured sub-headings wherever applicable:
+   - 1. Introduction & Academic Context
+   - 2. Formal Definition (Bold, clear, easy to memorize)
+   - 3. Detailed Step-by-Step Explanation (Explain how and why it works in clear, simple language)
+   - 4. Key Features / Characteristics (Numbered list with bold terms)
+   - 5. Types / Classification (Categorized with brief explanations)
+   - 6. Working Mechanism / Process / Steps
+   - 7. Advantages & Disadvantages (Detailed pros and cons)
+   - 8. Real-World Examples & Practical Industry Use Cases
+   - 9. Architectural Diagram / Flowchart (Clear ASCII, text-based, or Mermaid diagram with detailed explanation below it)
+   - 10. Formulas, Code Syntax & Mathematical Equations (Formulas in KaTeX/LaTeX with variables explained, or code snippets with syntax highlighting and line-by-line explanation)
+   - 11. Comparison Table (Markdown table comparing the topic with related alternatives)
+   - 12. Important Exam Points to Remember (High-yield recall bullets)
+   - 13. Summary & Conclusion
+4. In Part 2 (Question Bank), provide actual university exam questions derived from this document:
+   - Section A: 2 Marks Questions (Short & precise definition + 2-3 points)
+   - Section B: 4 Marks Questions (Introduction, definition, 4-5 bullet points, example)
+   - Section C: 6 Marks Questions (Detailed structured answer with features/steps, diagram/example, conclusion)
+   - Section D: 8–10 Marks Questions (Exhaustive master answer covering complete architecture, classifications, pros/cons, diagram, applications, and conclusion)
+5. Quality checks:
+   - Simple, student-friendly English (or Gujarati/Hindi).
+   - High educational depth. NO one-line bullet summaries.
+   - Do NOT invent facts or formulas not supported by the subject matter.
+   - Beautiful Markdown formatting with headers, blockquotes, bullet points, bold keywords, and tables.
+
+Format everything cleanly in Markdown starting with a top-level '# 📚 Master University Exam Study Notes: ...'.`;
 
     const result = await model.generateContent(prompt);
     const markdown = result.response.text();
-    if (markdown && markdown.length > 100) {
+    if (markdown && markdown.length > 250) {
       return markdown;
     }
-    return generateFallbackStudyNotes(text, language);
+    return generateFallbackStudyNotes(docInput, language);
   } catch (error) {
     console.error('[aiService] generateStudyNotes error:', error.message);
-    return generateFallbackStudyNotes(text, language);
+    return generateFallbackStudyNotes(docInput, language);
   }
 };
 

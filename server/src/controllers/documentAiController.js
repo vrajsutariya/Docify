@@ -372,8 +372,7 @@ export const getMindMap = async (req, res) => {
       }
     }
 
-    const text = document.extractedText || document.originalName;
-    const mindMap = await generateMindMap(text, language);
+    const mindMap = await generateMindMap(document, language);
 
     // Upsert into summary
     await Summary.findOneAndUpdate(
@@ -429,8 +428,7 @@ export const getStudyNotes = async (req, res) => {
       }
     }
 
-    const text = document.extractedText || document.originalName;
-    const studyNotes = await generateStudyNotes(text, language);
+    const studyNotes = await generateStudyNotes(document, language);
 
     await Summary.findOneAndUpdate(
       { documentId: id, language },

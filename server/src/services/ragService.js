@@ -466,51 +466,96 @@ const generateFallbackRAGResponse = (query, contextChunks = [], language = 'en')
  * @param {'en' | 'gu' | 'hi'} [language='en']
  * @returns {Promise<{ answer: string, citedPages: number[], confidence: number, relevantChunks: Array<Object> }>}
  */
-export const generateRAGResponse = async (query, contextChunks = [], language = 'en') => {
-  // If no chunks retrieved at all, return strict refusal
-  if (!contextChunks || contextChunks.length === 0) {
-    const refusal = generateFallbackRAGResponse(query, [], language);
-    return {
-      answer: refusal.answer,
-      citedPages: [],
-      confidence: 0,
-      relevantChunks: [],
-    };
-  }
-
-  // Assemble excerpts context
-  const contextExcerpts = contextChunks
-    .map(
-      (chunk, idx) =>
-        `--- EXCERPT ${idx + 1} [Document: "${chunk.documentName}", Page ${chunk.pageNumber}] ---\n${chunk.text}`
-    )
-    .join('\n\n');
+/**
+ * Generates ChatGPT-Grade Conversational RAG response with Gemini.
+ * Features multi-turn conversation memory, educational exam mode (2M, 4M, 6M, 10M),
+ * code formatting, natural multilingual reasoning (English, Gujarati, Hindi, Gujlish),
+ * and exact source page citations [Page X].
+ *
+ * @param {string} query
+ * @param {Array<{ chunkId: string, pageNumber: number, text: string, documentId: string, documentName: string, score: number }>} contextChunks
+ * @param {'en' | 'gu' | 'hi'} [language='en']
+ * @param {Array<{ role?: string, sender?: string, text?: string, content?: string }>} [conversationHistory=[]]
+ * @returns {Promise<{ answer: string, citedPages: number[], confidence: number, relevantChunks: Array<Object>, followUpSuggestions: string[] }>}
+ */
+export const generateRAGResponse = async (
+  query,
+  contextChunks = [],
+  language = 'en',
+  conversationHistory = []
+) => {
+  // Assemble excerpts context if available
+  const hasChunks = Array.isArray(contextChunks) && contextChunks.length > 0;
+  const contextExcerpts = hasChunks
+    ? contextChunks
+        .map(
+          (chunk, idx) =>
+            `--- EXCERPT ${idx + 1} [Document: "${chunk.documentName}", Page ${chunk.pageNumber}] ---\n${chunk.text}`
+        )
+        .join('\n\n')
+    : 'No direct document excerpts retrieved.';
 
   const languageInstructions = {
-    en: 'Answer strictly in English.',
-    gu: 'Answer strictly in Gujarati (ગુજરાતી ભાષામાં) using clear Gujarati script and natural vocabulary.',
-    hi: 'Answer strictly in Hindi (हिन्दी भाषा में) using clear Devanagari script and natural vocabulary.',
+    en: 'Answer in clear, natural, student-friendly English. For technical concepts, explain step-by-step.',
+    gu: 'Answer naturally and fluently in Gujarati (ગુજરાતી ભાષામાં). Preserve standard technical terms in English or in brackets (e.g., "MVC આર્કિટેક્ચર (Architecture)", "ડેટાબેઝ (Database)").',
+    hi: 'Answer naturally and fluently in Hindi (हिन्दी भाषा में). Preserve standard technical terms in English or in brackets (e.g., "MVC आर्किटेक्चर (Architecture)", "डेटाबेस (Database)").',
   };
 
   const selectedLangInstruction = languageInstructions[language] || languageInstructions.en;
 
-  const systemPrompt = `You are Docify AI, a precision Retrieval-Augmented Generation (RAG) assistant.
-CRITICAL GROUNDING RULES:
-1. Answer the user question ONLY and STRICTLY based on the provided document excerpts.
-2. If the answer cannot be found in the context excerpts, respond EXACTLY with:
-   "The document does not contain information to answer this question."
-   (or its exact translation if replying in Gujarati or Hindi).
-3. Do NOT guess, extrapolate, or bring in any outside knowledge not present in the excerpts.
-4. CITATION REQUIREMENT: Whenever you state a fact or point, append the source page in brackets, like [Page 2]. If multiple documents are present, you may cite like [Page 2].
-5. ${selectedLangInstruction}`;
+  const systemInstruction = `You are DocuMind AI, an intelligent, conversational university academic tutor and technical expert (comparable to ChatGPT educational mode).
 
-  const userPrompt = `DOCUMENT CONTEXT EXCERPTS:
+CORE BEHAVIOR & CONVERSATIONAL INTELLIGENCE:
+1. Natural & Conversational: Speak naturally, engagingly, and empathetically like an experienced university professor. Never output robotic canned templates or generic filler phrases like "I am an AI and as per the document".
+2. Conversational Memory: You remember the ongoing conversation. Handle follow-up questions effortlessly (e.g. "explain its principles", "give an example", "SOA su che?"). Understand pronouns ("this", "that", "the above topic") within the conversation context without asking users to repeat themselves.
+3. Document Grounding & Citations:
+   - When answering questions about the uploaded document(s), prioritize document excerpts as the primary source of truth.
+   - ALWAYS attach exact source page citation badges formatted as [Page X] (e.g. [Page 2] or [Page 4]) whenever referencing specific facts, definitions, or findings from the document.
+4. University Exam Mastery:
+   - If the user asks for answers tailored to marks (2 Marks, 4 Marks, 6 Marks, or 8-10 Marks), format the answer with suitable depth:
+     - 2 Marks: Short, crisp formal definition and 2-3 high-yield bullet points.
+     - 4 Marks: Introduction/definition, 4-5 structured explanatory points, and a concrete example.
+     - 6 Marks: Structured university answer with Introduction, Definition, Detailed Steps/Features, Example/Flowchart, and Conclusion.
+     - 8-10 Marks: Comprehensive master essay with full architecture, components, process breakdown, comparison table, advantages/disadvantages, real-world applications, and conclusion.
+5. Technical, Code & Math Excellence:
+   - For programming questions (React, Node.js, Express, MongoDB, SQL, Python, Java, C++, APIs), provide clean code blocks with syntax highlighting, clear step-by-step logic, and file placement guidance.
+   - For mathematics or science, write formulas clearly formatted in KaTeX/LaTeX ($...$ or $$...$$) and explain each variable.
+   - Use comparison tables when comparing two or more concepts.
+6. Honest Boundary Handling:
+   - If the user asks whether a specific detail is present in the document and it is absent, state honestly: "The uploaded document does not mention [topic]. However, from a general academic perspective..." and provide the educational answer.
+7. Language: ${selectedLangInstruction} Also support informal mixed questions (like Gujlish: "SOA su che? Simple ma samjavo").`;
+
+  // Build conversational turns for Gemini API
+  const formattedContents = [];
+
+  // Filter and format previous turns (last 8 turns for high relevance and low latency)
+  if (Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+    const recentTurns = conversationHistory.slice(-8);
+    for (const turn of recentTurns) {
+      const isUser = turn.role === 'user' || turn.sender === 'user';
+      const text = (turn.text || turn.content || '').trim();
+      if (!text) continue;
+
+      formattedContents.push({
+        role: isUser ? 'user' : 'model',
+        parts: [{ text: text.slice(0, 2000) }],
+      });
+    }
+  }
+
+  // Current turn with Document Context + User Question
+  const currentUserText = `[DOCUMENT CONTEXT EXCERPTS]:
 ${contextExcerpts}
 
-USER QUESTION:
+[USER QUESTION]:
 ${query}
 
-Please provide a clear, accurate, and concise answer strictly adhering to the grounding and citation rules above.`;
+Please provide an articulate, high-quality, student-friendly response adhering to the guidelines above.`;
+
+  formattedContents.push({
+    role: 'user',
+    parts: [{ text: currentUserText }],
+  });
 
   // Attempt Gemini model generation
   if (isGeminiConfigured()) {
@@ -519,19 +564,34 @@ Please provide a clear, accurate, and concise answer strictly adhering to the gr
       const modelName = process.env.AI_MODEL || 'gemini-1.5-flash';
       const model = genAI.getGenerativeModel({
         model: modelName,
+        systemInstruction: {
+          parts: [{ text: systemInstruction }],
+        },
         generationConfig: {
-          temperature: 0.1, // low temperature to eliminate hallucinations
-          maxOutputTokens: 1024,
+          temperature: 0.2,
+          maxOutputTokens: 3072, // Generous capacity for deep answers
         },
       });
 
+      // Ensure proper alternating roles starting with 'user'
+      const sanitizedContents = [];
+      let expectedRole = 'user';
+      for (const item of formattedContents) {
+        if (item.role === expectedRole) {
+          sanitizedContents.push(item);
+          expectedRole = expectedRole === 'user' ? 'model' : 'user';
+        }
+      }
+      // If the last item was not added because of role mismatch, ensure current query is included
+      if (sanitizedContents.length === 0 || sanitizedContents[sanitizedContents.length - 1].role !== 'user') {
+        sanitizedContents.push({
+          role: 'user',
+          parts: [{ text: currentUserText }],
+        });
+      }
+
       const response = await model.generateContent({
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }],
-          },
-        ],
+        contents: sanitizedContents,
       });
 
       const answerText = response?.response?.text()?.trim() || '';
@@ -539,18 +599,17 @@ Please provide a clear, accurate, and concise answer strictly adhering to the gr
       if (answerText) {
         let citedPages = extractCitedPages(answerText);
 
-        // If the model forgot explicit citation brackets but answered from the context,
-        // attach the top chunk's page number if not already present
-        if (
-          citedPages.length === 0 &&
-          !answerText.toLowerCase().includes('does not contain') &&
-          !answerText.includes('કોઈ માહિતી ઉપલબ્ધ નથી') &&
-          !answerText.includes('कोई जानकारी उपलब्ध नहीं')
-        ) {
+        // Attach citations if model referenced context but missed brackets
+        if (citedPages.length === 0 && hasChunks && !answerText.toLowerCase().includes('does not contain')) {
           citedPages = [contextChunks[0].pageNumber];
         }
 
-        const confidence = Math.min(0.98, Math.max(0.75, (contextChunks[0]?.score || 0.8)));
+        const confidence = hasChunks
+          ? Math.min(0.98, Math.max(0.78, contextChunks[0]?.score || 0.82))
+          : 0.88;
+
+        // Generate 3 contextual follow-up suggestions
+        const followUpSuggestions = generateFollowUpSuggestions(query, answerText, language);
 
         return {
           answer: answerText,
@@ -564,9 +623,10 @@ Please provide a clear, accurate, and concise answer strictly adhering to the gr
             fileUrl: c.fileUrl,
             fileType: c.fileType,
             pageCount: c.pageCount,
-            snippet: c.text.slice(0, 260),
+            snippet: (c.text || '').slice(0, 260),
             score: Number((c.score || 0).toFixed(3)),
           })),
+          followUpSuggestions,
         };
       }
     } catch (apiError) {
@@ -579,7 +639,7 @@ Please provide a clear, accurate, and concise answer strictly adhering to the gr
   return {
     answer: fallbackResult.answer,
     citedPages: fallbackResult.citedPages,
-    confidence: 0.72,
+    confidence: 0.75,
     relevantChunks: contextChunks.map((c) => ({
       chunkId: c.chunkId,
       pageNumber: c.pageNumber,
@@ -588,10 +648,57 @@ Please provide a clear, accurate, and concise answer strictly adhering to the gr
       fileUrl: c.fileUrl,
       fileType: c.fileType,
       pageCount: c.pageCount,
-      snippet: c.text.slice(0, 260),
+      snippet: (c.text || '').slice(0, 260),
       score: Number((c.score || 0).toFixed(3)),
     })),
+    followUpSuggestions: generateFollowUpSuggestions(query, fallbackResult.answer, language),
   };
+};
+
+/**
+ * Generates 3 intelligent, educational follow-up suggestions
+ */
+const generateFollowUpSuggestions = (query = '', answer = '', language = 'en') => {
+  const isGu = language === 'gu';
+  const isHi = language === 'hi';
+
+  if (isGu) {
+    return [
+      'આ વિષયને વાસ્તવિક ઉદાહરણ સાથે સમજાવો',
+      'પરીક્ષા માટે ૪ ગુણનો આદર્શ જવાબ આપો',
+      'આના મુખ્ય ફાયદા અને ગેરફાયદા જણાવો',
+    ];
+  }
+
+  if (isHi) {
+    return [
+      'इस विषय को वास्तविक उदाहरण के साथ समझाएं',
+      'परीक्षा के लिए ४ अंक का आदर्श उत्तर दें',
+      'इसके प्रमुख लाभ और हानियां बताएं',
+    ];
+  }
+
+  // English default
+  const lowerQuery = query.toLowerCase();
+  if (lowerQuery.includes('code') || lowerQuery.includes('program') || lowerQuery.includes('syntax')) {
+    return [
+      'Show practical implementation code',
+      'Explain error handling and edge cases',
+      'What are the performance considerations?',
+    ];
+  }
+  if (lowerQuery.includes('mark') || lowerQuery.includes('exam')) {
+    return [
+      'What are the most heavily tested exam questions on this?',
+      'Provide a 6-mark answer with a diagram',
+      'Compare this with related alternative concepts',
+    ];
+  }
+  return [
+    'Explain this in a 4-mark university exam format',
+    'Give a real-world example and use case',
+    'What are the key advantages and limitations?',
+  ];
 };
 
 export default {

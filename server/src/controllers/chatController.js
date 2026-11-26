@@ -13,7 +13,13 @@ export const askQuestion = async (req, res) => {
       return errorResponse(res, 'Authentication required to query documents.', 401);
     }
 
-    const { documentIds, documentId, question, language = 'en' } = req.body;
+    const {
+      documentIds,
+      documentId,
+      question,
+      language = 'en',
+      conversationHistory = [],
+    } = req.body;
 
     // Normalize documentIds array
     let targetDocIds = [];
@@ -49,18 +55,32 @@ export const askQuestion = async (req, res) => {
 
     const authorizedDocIds = authorizedDocs.map((d) => d._id.toString());
 
-    // Step 1: Retrieve top-k relevant chunks across all selected authorized documents
+    // Conversational query expansion for follow-up questions
+    let retrievalQuery = question.trim();
+    if (Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+      const recentUserTurns = conversationHistory
+        .filter((t) => (t.role === 'user' || t.sender === 'user') && t.text && t.text.trim() !== question.trim());
+      const lastUserTurn = recentUserTurns[recentUserTurns.length - 1];
+
+      // If the current query is brief (e.g. "explain its principles", "give an example", "SOA su che?"), enrich with last context
+      if (lastUserTurn && retrievalQuery.split(/\s+/).length <= 5) {
+        retrievalQuery = `${lastUserTurn.text} ${retrievalQuery}`;
+      }
+    }
+
+    // Step 1: Retrieve top-k relevant chunks across all selected authorized documents (expanded to 6 chunks)
     const { chunks: relevantChunks, maxScore } = await findRelevantChunks(
-      question.trim(),
+      retrievalQuery,
       authorizedDocIds,
-      4
+      6
     );
 
-    // Step 2: Generate grounded RAG response with strictly enforced citations
+    // Step 2: Generate conversational ChatGPT-level response with memory & citations
     const ragResult = await generateRAGResponse(
       question.trim(),
       relevantChunks,
-      language
+      language,
+      conversationHistory
     );
 
     return successResponse(
@@ -68,8 +88,9 @@ export const askQuestion = async (req, res) => {
       {
         answer: ragResult.answer,
         citedPages: ragResult.citedPages || [],
-        confidence: ragResult.confidence || 0.8,
+        confidence: ragResult.confidence || 0.85,
         relevantChunks: ragResult.relevantChunks || [],
+        followUpSuggestions: ragResult.followUpSuggestions || [],
         searchedDocCount: authorizedDocIds.length,
       },
       'Response generated successfully',
