@@ -73,7 +73,7 @@ export const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 25 * 1024 * 1024, // 25 MB max limit
+    fileSize: 50 * 1024 * 1024, // 50 MB max limit for large PDF processing
   },
 });
 
@@ -84,11 +84,16 @@ export const handleSingleUpload = (fieldName = 'file') => {
   const uploadSingle = upload.single(fieldName);
 
   return (req, res, next) => {
+    // Extend socket timeout for upload route
+    if (req.setTimeout) {
+      req.setTimeout(300000);
+    }
+
     uploadSingle(req, res, (err) => {
       if (err) {
         if (err instanceof multer.MulterError) {
           if (err.code === 'LIMIT_FILE_SIZE') {
-            return errorResponse(res, 'File size exceeds maximum allowed limit of 25 MB.', 400);
+            return errorResponse(res, 'File size exceeds maximum allowed limit of 50 MB.', 400);
           }
           return errorResponse(res, err.message || 'File upload error occurred.', 400);
         }

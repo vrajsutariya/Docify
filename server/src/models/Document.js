@@ -1,5 +1,19 @@
 import mongoose from 'mongoose';
 
+const chunkSchema = new mongoose.Schema(
+  {
+    chunkId: {
+      type: String,
+      required: true,
+    },
+    text: {
+      type: String,
+      required: true,
+    },
+  },
+  { _id: false }
+);
+
 const pageSchema = new mongoose.Schema(
   {
     pageNumber: {
@@ -9,6 +23,10 @@ const pageSchema = new mongoose.Schema(
     text: {
       type: String,
       default: '',
+    },
+    chunks: {
+      type: [chunkSchema],
+      default: [],
     },
   },
   { _id: false }

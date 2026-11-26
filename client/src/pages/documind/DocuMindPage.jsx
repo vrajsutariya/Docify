@@ -27,12 +27,24 @@ import {
   ChevronDown,
   ShieldAlert,
   Search,
+  MessageSquare,
+  HelpCircle,
+  Trophy,
+  Play,
+  RotateCcw,
+  Printer,
+  Share2,
 } from 'lucide-react';
 import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Skeleton } from '../../components/common/Skeleton';
 import { DropZone } from '../../components/upload/DropZone';
+import { DocumentChat } from '../../components/chat/DocumentChat';
+import { QuizConfigModal } from '../../components/quiz/QuizConfigModal';
+import { QuizCard } from '../../components/quiz/QuizCard';
+import { ScoreBoard } from '../../components/quiz/ScoreBoard';
+import { FlashcardDeck } from '../../components/flashcards/FlashcardDeck';
 import {
   getDocumentById,
   getUserDocuments,
@@ -44,6 +56,12 @@ import {
   getSentiment,
   translateSummary,
 } from '../../services/documindService';
+import {
+  generateQuiz,
+  getQuizzesByDocument,
+  getQuizById,
+  submitQuizAttempt,
+} from '../../services/quizService';
 import { useLanguage } from '../../context/LanguageContext';
 
 export const DocuMindPage = () => {
@@ -51,6 +69,7 @@ export const DocuMindPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const docId = searchParams.get('docId');
+  const tabParam = searchParams.get('tab');
 
   // Documents list & selector state
   const [userDocs, setUserDocs] = useState([]);
@@ -58,8 +77,8 @@ export const DocuMindPage = () => {
   const [loadingDoc, setLoadingDoc] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
 
-  // Active Tab: 'summary' | 'keyInfo' | 'sentiment' | 'translate'
-  const [activeTab, setActiveTab] = useState('summary');
+  // Active Tab: 'summary' | 'chat' | 'keyInfo' | 'sentiment' | 'translate'
+  const [activeTab, setActiveTab] = useState(tabParam || 'summary');
 
   // Abstraction Depth: 'short' | 'medium' | 'detailed'
   const [abstractionDepth, setAbstractionDepth] = useState('short');
@@ -85,6 +104,16 @@ export const DocuMindPage = () => {
   const [copied, setCopied] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+
+  // Quiz & Flashcard state
+  const [quizzes, setQuizzes] = useState([]);
+  const [loadingQuizzes, setLoadingQuizzes] = useState(false);
+  const [activeQuiz, setActiveQuiz] = useState(null);
+  const [quizStage, setQuizStage] = useState('list'); // 'list' | 'taking' | 'scoreboard'
+  const [activeQuizQuestions, setActiveQuizQuestions] = useState([]);
+  const [quizAttemptResult, setQuizAttemptResult] = useState(null);
+  const [showQuizConfigModal, setShowQuizConfigModal] = useState(false);
+  const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
 
   // Load all user documents for the selector dropdown
   useEffect(() => {
@@ -185,13 +214,163 @@ export const DocuMindPage = () => {
     }
   }, [activeDoc, fetchSummary]);
 
+  // Fetch quizzes for active document
+  const fetchDocumentQuizzes = useCallback(
+    async (selectLatest = true) => {
+      if (!docId) return;
+      setLoadingQuizzes(true);
+      try {
+        const res = await getQuizzesByDocument(docId);
+        const list = res?.data || [];
+        setQuizzes(list);
+        if (selectLatest && list.length > 0 && !activeQuiz) {
+          const fullQuizRes = await getQuizById(list[0]._id);
+          const fullQuiz = fullQuizRes?.data || fullQuizRes;
+          setActiveQuiz(fullQuiz);
+          setActiveQuizQuestions(fullQuiz.questions || []);
+        }
+      } catch (err) {
+        console.warn('Error fetching document quizzes:', err);
+      } finally {
+        setLoadingQuizzes(false);
+      }
+    },
+    [docId, activeQuiz]
+  );
+
+  useEffect(() => {
+    if (docId) {
+      fetchDocumentQuizzes(true);
+    }
+  }, [docId, fetchDocumentQuizzes]);
+
+  // Handle Quiz Generation
+  const handleGenerateQuizSubmit = async (config) => {
+    if (!docId) return;
+    setIsGeneratingQuiz(true);
+    try {
+      const res = await generateQuiz({
+        documentId: docId,
+        ...config,
+      });
+      const newQuiz = res?.data || res;
+      setActiveQuiz(newQuiz);
+      setActiveQuizQuestions(newQuiz.questions || []);
+      setQuizStage('taking');
+      setShowQuizConfigModal(false);
+      setActiveTab('quiz');
+      fetchDocumentQuizzes(false);
+    } catch (err) {
+      console.error('Quiz generation error:', err);
+      alert(err?.response?.data?.message || 'Failed to generate quiz assessment.');
+    } finally {
+      setIsGeneratingQuiz(false);
+    }
+  };
+
+  // Start taking a specific quiz from the list
+  const handleStartQuiz = async (quizItem) => {
+    try {
+      const fullQuizRes = await getQuizById(quizItem._id);
+      const fullQuiz = fullQuizRes?.data || fullQuizRes;
+      setActiveQuiz(fullQuiz);
+      setActiveQuizQuestions(fullQuiz.questions || []);
+      setQuizStage('taking');
+      setActiveTab('quiz');
+    } catch (err) {
+      console.error('Error starting quiz:', err);
+    }
+  };
+
+  // Submit quiz attempt
+  const handleQuizComplete = async ({ answers, timeTakenSeconds }) => {
+    if (!activeQuiz) return;
+    try {
+      const res = await submitQuizAttempt(activeQuiz._id, {
+        answers,
+        timeTakenSeconds,
+      });
+      const data = res?.data || {};
+      setQuizAttemptResult(data);
+      setQuizStage('scoreboard');
+      fetchDocumentQuizzes(false);
+    } catch (err) {
+      console.error('Error submitting quiz attempt:', err);
+      let score = 0;
+      const wrongQuestionIds = [];
+      const topicStats = {};
+
+      activeQuizQuestions.forEach((q) => {
+        const userAns = (answers[q.id] || '').trim().toLowerCase();
+        const correctAns = (q.correctAnswer || '').trim().toLowerCase();
+        const isCorrect = userAns === correctAns;
+
+        const topic = q.topic || 'General';
+        if (!topicStats[topic]) topicStats[topic] = { total: 0, correct: 0 };
+        topicStats[topic].total += 1;
+
+        if (isCorrect) {
+          score += 1;
+          topicStats[topic].correct += 1;
+        } else {
+          wrongQuestionIds.push(q.id);
+        }
+      });
+
+      const topicBreakdown = {};
+      for (const [topic, stat] of Object.entries(topicStats)) {
+        topicBreakdown[topic] = {
+          total: stat.total,
+          correct: stat.correct,
+          percentage: Math.round((stat.correct / stat.total) * 100),
+          isWeak: Math.round((stat.correct / stat.total) * 100) < 60,
+        };
+      }
+
+      setQuizAttemptResult({
+        score,
+        total: activeQuizQuestions.length,
+        timeTakenSeconds,
+        wrongQuestionIds,
+        topicBreakdown,
+      });
+      setQuizStage('scoreboard');
+    }
+  };
+
+  // Retry Wrong Questions Only
+  const handleRetryWrongOnly = () => {
+    if (!activeQuiz || !quizAttemptResult?.wrongQuestionIds) return;
+    const wrongQs = activeQuiz.questions.filter((q) =>
+      quizAttemptResult.wrongQuestionIds.includes(q.id)
+    );
+    if (wrongQs.length > 0) {
+      setActiveQuizQuestions(wrongQs);
+      setQuizStage('taking');
+    }
+  };
+
+  // Retake Full Quiz
+  const handleRetakeFull = () => {
+    if (!activeQuiz) return;
+    setActiveQuizQuestions(activeQuiz.questions || []);
+    setQuizStage('taking');
+  };
+
   // Handle Tab Change
   const handleTabChange = (tab) => {
     setActiveTab(tab);
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      p.set('tab', tab);
+      return p;
+    });
     if (tab === 'keyInfo' && !keyInfoData) {
       fetchKeyInfo();
     } else if (tab === 'sentiment' && !sentimentData) {
       fetchSentiment();
+    } else if ((tab === 'quiz' || tab === 'flashcards') && quizzes.length === 0) {
+      fetchDocumentQuizzes(true);
     }
   };
 
@@ -500,10 +679,13 @@ export const DocuMindPage = () => {
       {/* Main DocuMind Intelligence Interface */}
       {activeDoc && (
         <div className="space-y-6">
-          {/* Tab Navigation: [Summary] | [Key Info] | [Sentiment & Category] | [Translate] */}
+          {/* Tab Navigation: [Summary] | [Chat (RAG)] | [AI Quiz] | [3D Flashcards] | [Key Info] | [Sentiment & Category] | [Translate] */}
           <div className="flex items-center gap-2 border-b border-light-border dark:border-dark-border overflow-x-auto pb-1">
             {[
               { id: 'summary', label: '3-Level Summary', icon: Layers },
+              { id: 'chat', label: 'Chat (RAG)', icon: MessageSquare },
+              { id: 'quiz', label: 'AI Quiz', icon: HelpCircle },
+              { id: 'flashcards', label: '3D Flashcards', icon: BookOpen },
               { id: 'keyInfo', label: 'Key Information', icon: Tag },
               { id: 'sentiment', label: 'Sentiment & Category', icon: Sparkles },
               { id: 'translate', label: 'Multilingual Translate', icon: Languages },
@@ -528,47 +710,289 @@ export const DocuMindPage = () => {
           </div>
 
           {/* Action Toolbar for Active Tab (Copy, Download, TTS) */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-light-surface/60 dark:bg-dark-surface/60 border border-light-border dark:border-dark-border">
-            <span className="text-xs text-light-body dark:text-dark-body font-medium flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-brand-orange" />
-              Powered by Google Gemini Document Intelligence
-            </span>
+          {!['chat', 'quiz', 'flashcards'].includes(activeTab) && (
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-light-surface/60 dark:bg-dark-surface/60 border border-light-border dark:border-dark-border">
+              <span className="text-xs text-light-body dark:text-dark-body font-medium flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-brand-orange" />
+                Powered by Google Gemini Document Intelligence
+              </span>
 
-            <div className="flex items-center gap-2">
-              {/* Text-to-Speech Button */}
-              <Button
-                variant={isSpeaking ? 'danger' : 'outline'}
-                size="sm"
-                leftIcon={isSpeaking ? VolumeX : Volume2}
-                onClick={toggleTTS}
-                className="text-xs"
-              >
-                {isSpeaking ? 'Stop Audio' : 'Listen (TTS)'}
-              </Button>
+              <div className="flex items-center gap-2">
+                {/* Text-to-Speech Button */}
+                <Button
+                  variant={isSpeaking ? 'danger' : 'outline'}
+                  size="sm"
+                  leftIcon={isSpeaking ? VolumeX : Volume2}
+                  onClick={toggleTTS}
+                  className="text-xs"
+                >
+                  {isSpeaking ? 'Stop Audio' : 'Listen (TTS)'}
+                </Button>
 
-              {/* Copy Button */}
-              <Button
-                variant="outline"
-                size="sm"
-                leftIcon={copied ? Check : Copy}
-                onClick={handleCopy}
-                className="text-xs"
-              >
-                {copied ? 'Copied' : 'Copy'}
-              </Button>
+                {/* Copy Button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={copied ? Check : Copy}
+                  onClick={handleCopy}
+                  className="text-xs"
+                >
+                  {copied ? 'Copied' : 'Copy'}
+                </Button>
 
-              {/* Download Markdown */}
-              <Button
-                variant="secondary"
-                size="sm"
-                leftIcon={Download}
-                onClick={() => handleDownload('md')}
-                className="text-xs"
-              >
-                Export .MD
-              </Button>
+                {/* Download Markdown */}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  leftIcon={Download}
+                  onClick={() => handleDownload('md')}
+                  className="text-xs"
+                >
+                  Export .MD
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* TAB CONTENT: CHAT WITH DOCUMENT (RAG) */}
+          {activeTab === 'chat' && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <DocumentChat
+                activeDoc={activeDoc}
+                userDocs={userDocs}
+                onSelectDoc={(doc) => setSearchParams({ docId: doc._id })}
+              />
+            </motion.div>
+          )}
+
+          {/* TAB CONTENT: AI QUIZ GENERATOR & PLAYER */}
+          {activeTab === 'quiz' && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-6"
+            >
+              {/* Quiz Stage: Taking Quiz */}
+              {quizStage === 'taking' && activeQuiz && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      leftIcon={ArrowLeft}
+                      onClick={() => setQuizStage('list')}
+                    >
+                      Exit Quiz
+                    </Button>
+                    <span className="text-xs text-light-body">
+                      Assessment in progress
+                    </span>
+                  </div>
+                  <QuizCard
+                    questions={activeQuizQuestions}
+                    quizTitle={activeQuiz.title}
+                    language={activeQuiz.language}
+                    onComplete={handleQuizComplete}
+                  />
+                </div>
+              )}
+
+              {/* Quiz Stage: Scoreboard */}
+              {quizStage === 'scoreboard' && quizAttemptResult && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      leftIcon={ArrowLeft}
+                      onClick={() => setQuizStage('list')}
+                    >
+                      Back to Assessments
+                    </Button>
+                  </div>
+                  <ScoreBoard
+                    score={quizAttemptResult.score}
+                    total={quizAttemptResult.total}
+                    timeTakenSeconds={quizAttemptResult.timeTakenSeconds}
+                    wrongQuestionIds={quizAttemptResult.wrongQuestionIds}
+                    topicBreakdown={quizAttemptResult.topicBreakdown}
+                    shareId={activeQuiz?.shareId}
+                    quizId={activeQuiz?._id}
+                    onRetryWrongOnly={handleRetryWrongOnly}
+                    onRetakeFull={handleRetakeFull}
+                    onSwitchToFlashcards={() => setActiveTab('flashcards')}
+                  />
+                </div>
+              )}
+
+              {/* Quiz Stage: List / Dashboard */}
+              {quizStage === 'list' && (
+                <div className="space-y-6">
+                  {/* Top Banner Card with Generate Button */}
+                  <Card className="p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6 bg-gradient-to-br from-light-surface via-transparent to-brand-red/5 dark:from-dark-surface dark:to-brand-red/10 border-light-border dark:border-dark-border">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="brand" size="sm">
+                          Exam Assessment Engine
+                        </Badge>
+                        <span className="text-xs text-light-body">
+                          {quizzes.length} {quizzes.length === 1 ? 'assessment' : 'assessments'} generated
+                        </span>
+                      </div>
+                      <h3 className="font-heading font-bold text-xl sm:text-2xl text-light-heading dark:text-dark-heading">
+                        Interactive AI Quiz & Diagnostic Exam
+                      </h3>
+                      <p className="text-xs sm:text-sm text-light-body max-w-xl">
+                        Generate configurable exams (MCQ, True/False, Blanks, Short Answer) with immediate pedagogical feedback, countdown timer, and weak-topic diagnostics.
+                      </p>
+                    </div>
+
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      leftIcon={Sparkles}
+                      onClick={() => setShowQuizConfigModal(true)}
+                      className="bg-brand-gradient shadow-glow-red shrink-0"
+                    >
+                      Generate New Quiz
+                    </Button>
+                  </Card>
+
+                  {/* List of Existing Quizzes for Document */}
+                  {loadingQuizzes ? (
+                    <Card className="p-8 space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-5 h-5 rounded-full border-2 border-brand-red border-t-transparent animate-spin" />
+                        <span className="text-xs font-semibold">Loading document assessments...</span>
+                      </div>
+                    </Card>
+                  ) : quizzes.length === 0 ? (
+                    <Card className="p-10 text-center space-y-4">
+                      <HelpCircle className="w-12 h-12 text-light-body mx-auto opacity-40" />
+                      <h4 className="font-heading font-bold text-base text-light-heading dark:text-dark-heading">
+                        No Assessments Created Yet
+                      </h4>
+                      <p className="text-xs text-light-body max-w-md mx-auto">
+                        Test your comprehension of "{activeDoc.originalName}" with custom question counts, difficulty levels, and target languages.
+                      </p>
+                      <Button
+                        variant="primary"
+                        leftIcon={Sparkles}
+                        onClick={() => setShowQuizConfigModal(true)}
+                        className="bg-brand-gradient shadow-glow-red"
+                      >
+                        Create First Quiz Now
+                      </Button>
+                    </Card>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {quizzes.map((quizItem) => (
+                        <Card
+                          key={quizItem._id}
+                          className="p-5 space-y-4 hover:border-brand-red/40 transition-all flex flex-col justify-between"
+                        >
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Badge variant="brand" size="sm" className="capitalize text-[10px]">
+                                {quizItem.difficulty}
+                              </Badge>
+                              <span className="font-mono text-[10px] uppercase font-bold text-light-body px-2 py-0.5 rounded bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border">
+                                {quizItem.language.toUpperCase()}
+                              </span>
+                            </div>
+                            <h4 className="font-heading font-bold text-base text-light-heading dark:text-dark-heading truncate">
+                              {quizItem.title}
+                            </h4>
+                            <div className="flex items-center gap-3 text-xs text-light-body">
+                              <span>{quizItem.questionCount} Questions</span>
+                              <span>&bull;</span>
+                              <span>{quizItem.flashcardCount} Flashcards</span>
+                              {quizItem.latestScore && (
+                                <>
+                                  <span>&bull;</span>
+                                  <span className="text-emerald-500 font-bold font-mono">
+                                    Last: {quizItem.latestScore}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 pt-2 border-t border-light-border dark:border-dark-border">
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              leftIcon={Play}
+                              onClick={() => handleStartQuiz(quizItem)}
+                              className="flex-1 bg-brand-gradient text-xs"
+                            >
+                              Take Quiz
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              leftIcon={Layers}
+                              onClick={async () => {
+                                const fullQuizRes = await getQuizById(quizItem._id);
+                                setActiveQuiz(fullQuizRes?.data || fullQuizRes);
+                                setActiveTab('flashcards');
+                              }}
+                              className="text-xs"
+                            >
+                              Flashcards
+                            </Button>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* TAB CONTENT: 3D FLASHCARDS & SPACED REPETITION */}
+          {activeTab === 'flashcards' && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-6"
+            >
+              {activeQuiz && activeQuiz.flashcards?.length > 0 ? (
+                <FlashcardDeck
+                  quizId={activeQuiz._id}
+                  initialFlashcards={activeQuiz.flashcards}
+                  title={`${activeQuiz.title} - Leitner Deck`}
+                  language={activeQuiz.language}
+                  onFinishSession={() => setActiveTab('quiz')}
+                />
+              ) : (
+                <Card className="p-10 text-center space-y-4 max-w-xl mx-auto">
+                  <BookOpen className="w-12 h-12 text-light-body mx-auto opacity-40" />
+                  <h4 className="font-heading font-bold text-base text-light-heading dark:text-dark-heading">
+                    No Flashcard Deck Generated Yet
+                  </h4>
+                  <p className="text-xs text-light-body">
+                    Generate an AI assessment to automatically extract key concepts into 3D flip cards with Leitner 3-box spaced repetition.
+                  </p>
+                  <Button
+                    variant="primary"
+                    leftIcon={Sparkles}
+                    onClick={() => setShowQuizConfigModal(true)}
+                    className="bg-brand-gradient shadow-glow-red"
+                  >
+                    Generate Flashcards with AI
+                  </Button>
+                </Card>
+              )}
+            </motion.div>
+          )}
 
           {/* TAB CONTENT 1: 3-LEVEL ABSTRACTION SUMMARY */}
           {activeTab === 'summary' && (
@@ -1069,6 +1493,16 @@ export const DocuMindPage = () => {
           )}
         </div>
       )}
+
+      {/* Quiz Configuration Modal */}
+      <QuizConfigModal
+        isOpen={showQuizConfigModal}
+        onClose={() => setShowQuizConfigModal(false)}
+        onGenerate={handleGenerateQuizSubmit}
+        documentTitle={activeDoc?.originalName}
+        pageCount={activeDoc?.pageCount || 1}
+        isLoading={isGeneratingQuiz}
+      />
     </div>
   );
 };

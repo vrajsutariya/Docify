@@ -5,7 +5,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000,
+  timeout: 120000, // 120s default timeout for heavy AI document operations
 });
 
 // Request interceptor to attach JWT token
@@ -44,7 +44,9 @@ api.interceptors.response.use(
     }
 
     let message = error.response?.data?.message || error.message || 'An unexpected error occurred.';
-    if (error.code === 'ERR_NETWORK' || message === 'Network Error') {
+    if (error.code === 'ECONNABORTED' || (error.message && error.message.toLowerCase().includes('timeout'))) {
+      message = 'Document processing timed out. Large or scanned PDFs may take longer to process. Please retry or upload an optimized PDF.';
+    } else if (error.code === 'ERR_NETWORK' || message === 'Network Error') {
       message = 'Backend API server unreachable (http://localhost:5000). Please ensure server is running.';
     }
 

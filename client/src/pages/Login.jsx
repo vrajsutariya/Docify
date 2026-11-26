@@ -12,14 +12,13 @@ import {
   Sun,
   Moon,
   Sparkles,
-  CheckCircle2,
+  Layers,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
-import { Button } from '../components/common/Button';
-import { Badge } from '../components/common/Badge';
 import { Dropdown } from '../components/common/Dropdown';
+import { CosmicOrbitalBackground } from '../components/auth/CosmicOrbitalBackground';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
@@ -74,68 +73,57 @@ export const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-light-bg dark:bg-dark-bg text-light-body dark:text-dark-body flex flex-col justify-between transition-colors duration-200">
+    <div className="relative min-h-screen bg-slate-50 dark:bg-[#030712] text-slate-900 dark:text-slate-100 flex flex-col justify-between overflow-x-hidden selection:bg-cyan-500/30 selection:text-cyan-600 dark:selection:text-cyan-200 transition-colors duration-200">
+      {/* Cosmic background with orbital rings, nodes, and top beam */}
+      <CosmicOrbitalBackground />
+
       {/* Top Header Bar */}
-      <header className="px-6 py-4 flex items-center justify-between max-w-6xl mx-auto w-full">
+      <header className="relative z-20 px-6 py-4 flex items-center justify-between max-w-6xl mx-auto w-full">
         <Link to="/" className="flex items-center gap-2.5 group">
-          <div className="w-8 h-8 rounded-xl bg-cyan-gradient flex items-center justify-center text-black font-heading font-extrabold text-base shadow-sm group-hover:scale-105 transition-transform">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-cyan-300 flex items-center justify-center text-slate-950 font-heading font-black text-base shadow-[0_0_12px_rgba(6,182,212,0.4)] group-hover:scale-105 transition-transform">
             D
           </div>
-          <span className="font-heading font-extrabold text-lg tracking-tight text-light-heading dark:text-dark-heading">
-            Doc<span className="text-accent-dark dark:text-accent-light">ify</span>
+          <span className="font-heading font-extrabold text-lg tracking-tight text-slate-900 dark:text-white">
+            Doc<span className="text-cyan-500 dark:text-cyan-400">ify</span>
           </span>
         </Link>
-
-        <div className="flex items-center gap-2">
-          {/* Language Switcher */}
-          <Dropdown
-            align="right"
-            items={languageDropdownItems}
-            trigger={
-              <button
-                type="button"
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface hover:border-accent text-light-heading dark:text-dark-heading text-xs font-semibold"
-              >
-                <Globe className="w-3.5 h-3.5 text-accent-dark dark:text-accent-light" />
-                <span>{currentLangObj.script}</span>
-              </button>
-            }
-          />
-
-          {/* Theme Toggle */}
-          <button
-            type="button"
-            onClick={toggleTheme}
-            aria-label="Toggle Theme"
-            className="p-2 rounded-xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface text-light-heading dark:text-dark-heading hover:border-accent"
-          >
-            {isDark ? <Sun className="w-4 h-4 text-accent-light" /> : <Moon className="w-4 h-4 text-accent-dark" />}
-          </button>
-        </div>
       </header>
 
-      {/* Main Login Card */}
-      <main className="flex-1 flex items-center justify-center px-4 py-8">
+      {/* Main Content Area */}
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-6 sm:py-10">
+        {/* Brand Headline (Matching Screenshot Typography) */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: 'easeOut' }}
-          className="w-full max-w-md"
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+          className="text-center mb-6 sm:mb-8"
         >
-          <div className="bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border rounded-2xl p-6 sm:p-8 shadow-soft dark:shadow-soft-dark space-y-6">
-            {/* Header info */}
-            <div className="text-center space-y-1.5">
-              <div className="inline-flex justify-center mb-2">
-                <Badge variant="brand" size="sm">
-                  <Sparkles className="w-3 h-3" />
-                  Docify Authentication
-                </Badge>
-              </div>
-              <h1 className="font-heading font-extrabold text-2xl text-light-heading dark:text-dark-heading tracking-tight">
+          <h1 className="font-heading font-black text-3xl sm:text-4xl md:text-5xl tracking-tight bg-gradient-to-r from-cyan-400 via-cyan-300 to-teal-200 bg-clip-text text-transparent drop-shadow-[0_0_24px_rgba(6,182,212,0.45)]">
+            Docify
+          </h1>
+          <p className="font-heading font-bold text-lg sm:text-xl md:text-2xl text-white tracking-tight mt-1.5">
+            One platform.
+          </p>
+          <p className="font-heading font-semibold text-xs sm:text-sm text-cyan-400 tracking-wider mt-0.5">
+            End-to-End Operations.
+          </p>
+        </motion.div>
+
+        {/* Central Glassmorphic Card */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96, y: 12 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+          className="w-full max-w-[420px]"
+        >
+          <div className="bg-[#0b1329]/80 backdrop-blur-xl border border-cyan-500/25 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-[0_0_45px_rgba(6,182,212,0.12)] space-y-5">
+            {/* Card Header */}
+            <div className="text-center space-y-1">
+              <h2 className="font-heading font-bold text-xl text-white tracking-tight">
                 {t('auth.loginTitle', 'Welcome Back')}
-              </h1>
-              <p className="text-xs text-light-body dark:text-dark-body">
-                {t('auth.loginSubtitle', 'Sign in to access your intelligent documents & analytics workspace')}
+              </h2>
+              <p className="text-xs text-slate-400">
+                {t('auth.loginSubtitle', 'Login to your account to continue')}
               </p>
             </div>
 
@@ -146,7 +134,7 @@ export const Login = () => {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="p-3 rounded-xl bg-status-error/10 border border-status-error/20 flex items-start gap-2.5 text-xs text-status-error"
+                  className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 flex items-start gap-2.5 text-xs text-red-400"
                 >
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>{errorMessage}</span>
@@ -156,110 +144,104 @@ export const Login = () => {
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Email */}
+              {/* Username / Email */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-light-heading dark:text-dark-heading">
-                  {t('auth.emailLabel', 'Email Address')}
+                <label className="block text-xs font-semibold text-slate-300">
+                  {t('auth.emailLabel', 'Username')}
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-light-body dark:text-dark-body absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder={t('auth.emailPlaceholder', 'name@example.com')}
-                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-heading dark:text-dark-heading text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                    placeholder={t('auth.emailPlaceholder', 'Enter your email')}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700/70 bg-[#060b1b]/80 text-slate-100 placeholder-slate-500 text-xs sm:text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
                   />
                 </div>
               </div>
 
               {/* Password */}
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-semibold text-light-heading dark:text-dark-heading">
-                    {t('auth.passwordLabel', 'Password')}
-                  </label>
-                  <span className="text-[11px] text-accent-dark dark:text-accent-light hover:underline cursor-pointer">
-                    {t('auth.forgotPassword', 'Forgot password?')}
-                  </span>
-                </div>
+                <label className="block text-xs font-semibold text-slate-300">
+                  {t('auth.passwordLabel', 'Password')}
+                </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-light-body dark:text-dark-body absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder={t('auth.passwordPlaceholder', '••••••••')}
-                    className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-heading dark:text-dark-heading text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                    placeholder={t('auth.passwordPlaceholder', 'Enter your password')}
+                    className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-slate-700/70 bg-[#060b1b]/80 text-slate-100 placeholder-slate-500 text-xs sm:text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-light-body dark:text-dark-body hover:text-light-heading dark:hover:text-dark-heading"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition-colors"
                     aria-label="Toggle password visibility"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+
+                {/* Forgot Password */}
+                <div className="flex justify-end pt-0.5">
+                  <span className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer transition-colors">
+                    {t('auth.forgotPassword', 'Forgot password?')}
+                  </span>
+                </div>
               </div>
 
-              {/* Remember Me */}
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="rememberMe"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="rounded border-light-border dark:border-dark-border text-accent focus:ring-accent cursor-pointer"
-                />
-                <label htmlFor="rememberMe" className="text-xs text-light-body dark:text-dark-body select-none cursor-pointer">
-                  {t('auth.rememberMe', 'Remember me')}
-                </label>
-              </div>
-
-              {/* Submit Button */}
-              <Button
+              {/* Submit Button (Vibrant Cyan Solid, Matches Photo) */}
+              <button
                 type="submit"
-                variant="primary"
-                size="lg"
-                isLoading={isSubmitting}
-                className="w-full mt-2"
-                rightIcon={ArrowRight}
+                disabled={isSubmitting}
+                className="w-full mt-2 py-3 px-4 rounded-xl font-bold text-sm bg-cyan-400 hover:bg-cyan-300 text-slate-950 shadow-[0_0_22px_rgba(6,182,212,0.4)] hover:shadow-[0_0_30px_rgba(6,182,212,0.65)] active:scale-[0.99] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {t('auth.signInButton', 'Sign In')}
-              </Button>
+                {isSubmitting ? (
+                  <span className="inline-block w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <span>{t('auth.signInButton', 'Login')}</span>
+                    <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                  </>
+                )}
+              </button>
 
               {/* Divider */}
               <div className="relative flex py-1 items-center">
-                <div className="flex-grow border-t border-light-border dark:border-dark-border"></div>
-                <span className="flex-shrink mx-3 text-[11px] text-light-body/70 dark:text-dark-body/70 uppercase font-mono tracking-wider">
+                <div className="flex-grow border-t border-slate-800"></div>
+                <span className="flex-shrink mx-3 text-[10px] text-slate-500 uppercase font-mono tracking-wider">
                   {t('auth.orDivider', 'Or explore first')}
                 </span>
-                <div className="flex-grow border-t border-light-border dark:border-dark-border"></div>
+                <div className="flex-grow border-t border-slate-800"></div>
               </div>
 
               {/* Guest / Demo Access Button */}
-              <Button
+              <button
                 type="button"
-                variant="outline"
-                size="md"
                 onClick={handleGuestExplore}
-                isLoading={isGuestSubmitting}
-                className="w-full border-dashed border-accent/40 hover:border-accent text-accent-dark dark:text-accent-light bg-accent/5 hover:bg-accent/10"
-                leftIcon={Sparkles}
+                disabled={isGuestSubmitting}
+                className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold border border-dashed border-cyan-500/40 hover:border-cyan-400 text-cyan-300 bg-cyan-500/5 hover:bg-cyan-500/15 backdrop-blur-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
               >
-                {t('auth.guestButton', 'Explore as Guest (No Login Required)')}
-              </Button>
+                {isGuestSubmitting ? (
+                  <span className="inline-block w-3.5 h-3.5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>{t('auth.guestButton', 'Explore as Guest (No Login Required)')}</span>
+                  </>
+                )}
+              </button>
             </form>
 
             {/* Switch to Register */}
-            <div className="pt-2 text-center border-t border-light-border dark:border-dark-border text-xs text-light-body dark:text-dark-body">
+            <div className="pt-2 text-center border-t border-slate-800/80 text-xs text-slate-400">
               <span>{t('auth.dontHaveAccount', "Don't have an account?")} </span>
               <Link
                 to="/register"
-                className="font-semibold text-accent-dark dark:text-accent-light hover:underline ml-1"
+                className="font-semibold text-cyan-400 hover:text-cyan-300 hover:underline ml-1"
               >
                 {t('auth.signUpButton', 'Create Free Account')}
               </Link>
@@ -268,9 +250,9 @@ export const Login = () => {
         </motion.div>
       </main>
 
-      {/* Mini Footer */}
-      <footer className="py-4 text-center text-xs text-light-body/60 dark:text-dark-body/60 font-mono">
-        Docify © {new Date().getFullYear()} — Secure JWT & MongoDB Auth
+      {/* Mini Footer (Matching Screenshot) */}
+      <footer className="relative z-20 py-4 text-center text-xs text-slate-500">
+        © {new Date().getFullYear()} Docify. All rights reserved.
       </footer>
     </div>
   );

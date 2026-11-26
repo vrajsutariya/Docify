@@ -1,72 +1,117 @@
-
 import mongoose from 'mongoose';
 
 const LOCAL_MONGO_URI = process.env.LOCAL_MONGO_URI || 'mongodb://127.0.0.1:27017/docify';
+const PRIMARY_MONGO_URI = process.env.MONGO_URI || LOCAL_MONGO_URI;
 
-let isSwitching = false;
+let isLifecycleInitialized = false;
+let isConnectedAndReady = false;
 
-// Handle runtime SSL/TLS drops gracefully
-mongoose.connection.on('error', async (err) => {
-  const msg = err.message || '';
-  console.error('❌ MongoDB Connection Error:', msg);
+/**
+ * Single source of truth for Mongoose connection lifecycle listeners.
+ * Configured once to provide clear, robust monitoring without duplicate events
+ * or destructive recursive reconnection loops.
+ */
+export const initMongooseLifecycleListeners = () => {
+  if (isLifecycleInitialized) return;
+  isLifecycleInitialized = true;
 
-  if ((msg.includes('SSL routines') || msg.includes('alert number 80') || msg.includes('tlsv1 alert')) && !isSwitching) {
-    isSwitching = true;
-    console.warn('⚠️ Atlas dropped TLS socket. Automatically recovering via local MongoDB fallback...');
-    try {
-      await mongoose.disconnect().catch(() => {});
-      await mongoose.connect(LOCAL_MONGO_URI, {
-        serverSelectionTimeoutMS: 5000,
-        connectTimeoutMS: 5000,
-      });
-      console.log('✅ Successfully restored database connection with local MongoDB!');
-    } catch (fallbackErr) {
-      console.error('❌ Local recovery failed:', fallbackErr.message);
-    } finally {
-      isSwitching = false;
+  mongoose.connection.on('connected', () => {
+    isConnectedAndReady = true;
+    const host = mongoose.connection.host || 'unknown';
+    const port = mongoose.connection.port ? `:${mongoose.connection.port}` : '';
+    const name = mongoose.connection.name || 'docify';
+    console.log(`✅ MongoDB Connection Established: ${name} (${host}${port})`);
+  });
+
+  mongoose.connection.on('disconnected', () => {
+    if (isConnectedAndReady) {
+      console.log('⚠️ MongoDB Connection Lost — driver awaiting network restoration...');
+      isConnectedAndReady = false;
     }
-  }
-});
+  });
 
+  mongoose.connection.on('reconnected', () => {
+    isConnectedAndReady = true;
+    console.log(`🔄 MongoDB Connection Restored: ${mongoose.connection.name} (${mongoose.connection.host})`);
+  });
+
+  mongoose.connection.on('error', (err) => {
+    // Only log active runtime errors; never force disconnect() inside error handlers,
+    // as Mongoose's internal driver automatically manages transient pool recovery.
+    if (isConnectedAndReady) {
+      console.error('❌ MongoDB Connection Error:', err.message);
+    }
+  });
+};
+
+/**
+ * Establishes stable MongoDB connection with automatic fallback.
+ * Validates connection state and handles TLS options properly on Node.js 24.
+ */
 export const connectDB = async () => {
-  const primaryUri = process.env.MONGO_URI || LOCAL_MONGO_URI;
+  initMongooseLifecycleListeners();
+
+  // If already connected, return existing connection immediately
+  if (mongoose.connection.readyState === 1) {
+    return mongoose.connection;
+  }
+
+  const baseOptions = {
+    serverSelectionTimeoutMS: 5000,
+    connectTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+    maxPoolSize: 10,
+    minPoolSize: 2,
+    autoIndex: true,
+  };
+
+  const primaryTarget = PRIMARY_MONGO_URI;
+  const isAtlas = primaryTarget.includes('mongodb+srv') || primaryTarget.includes('mongodb.net');
+  const targetOptions = isAtlas
+    ? {
+        ...baseOptions,
+        tls: true,
+        tlsAllowInvalidCertificates: true,
+      }
+    : baseOptions;
 
   try {
-    console.log(`🔌 Connecting to primary MongoDB: ${primaryUri.replace(/:([^:@]{4})[^:@]*@/, ':****@')}`);
-    const conn = await mongoose.connect(primaryUri, {
-      serverSelectionTimeoutMS: 6000,
-      connectTimeoutMS: 6000,
-      socketTimeoutMS: 30000,
-    });
+    const masked = primaryTarget.replace(/:([^:@]{4})[^:@]*@/, ':****@');
+    console.log(`🔌 Connecting to primary database: ${masked}`);
 
-    // Verify operational readiness
-    await conn.connection.db.admin().ping();
+    await mongoose.connect(primaryTarget, targetOptions);
+    await mongoose.connection.db.admin().ping();
 
+    isConnectedAndReady = true;
     console.log('===============================================');
-    console.log(`✅ MongoDB Connected Successfully: ${conn.connection.name} (${conn.connection.host})`);
+    console.log(`✅ MongoDB Connected Successfully: ${mongoose.connection.name} (${mongoose.connection.host})`);
     console.log('===============================================');
-    return conn;
-  } catch (primaryError) {
-    console.warn(`⚠️ Primary MongoDB connection failed (${primaryError.message}).`);
+    return mongoose.connection;
+  } catch (primaryErr) {
+    console.warn(`⚠️ Primary MongoDB unavailable (${primaryErr.message}).`);
 
-    if (primaryUri !== LOCAL_MONGO_URI) {
-      console.log(`🔄 Switching immediately to local MongoDB (${LOCAL_MONGO_URI})...`);
+    if (primaryTarget !== LOCAL_MONGO_URI) {
+      console.log(`🔄 Switching cleanly to local MongoDB: ${LOCAL_MONGO_URI}...`);
       try {
-        await mongoose.disconnect().catch(() => {});
-        const localConn = await mongoose.connect(LOCAL_MONGO_URI, {
-          serverSelectionTimeoutMS: 5000,
-          connectTimeoutMS: 5000,
-        });
+        if (mongoose.connection.readyState !== 0) {
+          await mongoose.disconnect().catch(() => {});
+        }
+
+        await mongoose.connect(LOCAL_MONGO_URI, baseOptions);
+        await mongoose.connection.db.admin().ping();
+
+        isConnectedAndReady = true;
         console.log('===============================================');
-        console.log(`✅ Local MongoDB Connected: ${localConn.connection.name} (${localConn.connection.host})`);
+        console.log(`✅ Local MongoDB Connected & Ready: ${mongoose.connection.name} (${mongoose.connection.host})`);
         console.log('===============================================');
-        return localConn;
-      } catch (localError) {
-        console.error('❌ Local MongoDB fallback failed:', localError.message);
-        throw localError;
+        return mongoose.connection;
+      } catch (localErr) {
+        console.error('❌ Local MongoDB fallback failed:', localErr.message);
+        throw localErr;
       }
     }
-    throw primaryError;
+
+    throw primaryErr;
   }
 };
 

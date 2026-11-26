@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -15,7 +15,7 @@ import { FilePreview } from './FilePreview';
 import { uploadFile, formatBytes } from '../../services/documentService';
 import { Button } from '../common/Button';
 
-const MAX_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
+const MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB limit for large documents & multi-page PDFs
 
 const ACCEPTED_FILE_TYPES = {
   'application/pdf': ['.pdf'],
@@ -52,11 +52,14 @@ export const DropZone = ({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+  const isUploadingRef = useRef(false);
 
   const handleUpload = useCallback(
     async (fileToUpload) => {
-      if (!fileToUpload) return;
+      // Guard against duplicate upload requests
+      if (!fileToUpload || isUploadingRef.current) return;
 
+      isUploadingRef.current = true;
       setIsUploading(true);
       setUploadProgress(0);
       setErrorMessage(null);
@@ -69,12 +72,14 @@ export const DropZone = ({
         const docData = response?.data || response;
         setUploadedDoc(docData);
         setIsUploading(false);
+        isUploadingRef.current = false;
 
         if (onUploadSuccess) {
           onUploadSuccess(docData);
         }
       } catch (err) {
         setIsUploading(false);
+        isUploadingRef.current = false;
         const msg =
           err?.response?.data?.message ||
           err?.message ||
@@ -91,6 +96,7 @@ export const DropZone = ({
 
   const onDrop = useCallback(
     (acceptedFiles, fileRejections) => {
+      if (isUploadingRef.current) return;
       setErrorMessage(null);
 
       // Handle Rejections
@@ -99,7 +105,7 @@ export const DropZone = ({
         const error = firstRejection.errors[0];
 
         if (error.code === 'file-too-large') {
-          setErrorMessage(`File exceeds 25 MB limit (${formatBytes(firstRejection.file.size)}). Please select a smaller file.`);
+          setErrorMessage(`File exceeds 50 MB limit (${formatBytes(firstRejection.file.size)}). Please select a file under 50 MB.`);
         } else if (error.code === 'file-invalid-type') {
           setErrorMessage(`Invalid format (${firstRejection.file.name}). Supported: PDF, DOCX, TXT, CSV, XLSX, PNG, JPG.`);
         } else {
@@ -184,7 +190,7 @@ export const DropZone = ({
                 : 'Drag & Drop your document here, or click to browse'}
             </h3>
             <p className="text-xs sm:text-sm text-light-body dark:text-dark-body">
-              Supports digital PDFs, Word docs, scanned images with Gujarati/Hindi OCR, and data sheets up to <strong className="text-brand-red dark:text-brand-redBright font-semibold">25 MB</strong>
+              Supports digital PDFs, Word docs, scanned images with Gujarati/Hindi OCR, and data sheets up to <strong className="text-brand-red dark:text-brand-redBright font-semibold">50 MB</strong>
             </p>
           </div>
 

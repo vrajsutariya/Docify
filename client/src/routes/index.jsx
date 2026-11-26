@@ -7,6 +7,7 @@ import { AppLayout } from '../components/layout/AppLayout';
 import { Landing } from '../pages/Landing';
 import { Login } from '../pages/Login';
 import { Register } from '../pages/Register';
+import { SharedQuizPage } from '../pages/quiz/SharedQuizPage';
 
 // Protected Dashboard & Module Pages
 import { Dashboard } from '../pages/Dashboard';
@@ -26,6 +27,8 @@ export const AppRoutes = () => {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/quiz/share/:shareId" element={<SharedQuizPage />} />
+      <Route path="/quiz/:shareId" element={<SharedQuizPage />} />
 
       {/* Protected Application Routes inside AppLayout (Main Layout Shell) */}
       <Route

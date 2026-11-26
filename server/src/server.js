@@ -17,25 +17,12 @@ import { initCleanupScheduler } from './jobs/cleanupJob.js';
 
 const PORT = process.env.PORT || 5000;
 
-// MongoDB connection events
-mongoose.connection.on('connected', () => {
-  console.log('✅ MongoDB Connection Established');
-});
-
-mongoose.connection.on('error', (error) => {
-  console.error('❌ MongoDB Error:', error.message);
-});
-
-mongoose.connection.on('disconnected', () => {
-  console.log('⚠️ MongoDB Disconnected');
-});
-
 // Start application
 const startServer = async () => {
   try {
     console.log('⏳ Connecting to MongoDB...');
 
-    // Step 1: Connect Database
+    // Step 1: Connect Database (Lifecycle listeners configured in db.js)
     await connectDB();
 
     // Step 2: Verify connection
@@ -59,6 +46,11 @@ const startServer = async () => {
       );
       console.log('===============================================');
     });
+
+    // Configure server timeouts for large PDF uploads and AI processing (5 minutes)
+    server.timeout = 300000;
+    server.keepAliveTimeout = 65000;
+    server.headersTimeout = 66000;
 
     // Graceful shutdown
     const shutdown = async () => {

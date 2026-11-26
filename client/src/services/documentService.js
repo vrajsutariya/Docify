@@ -14,6 +14,7 @@ export const uploadFile = async (file, onProgressCallback) => {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
+    timeout: 300000, // 5 minutes timeout for large PDF upload, parsing, and OCR
     onUploadProgress: (progressEvent) => {
       if (progressEvent.total && onProgressCallback) {
         const percentCompleted = Math.round(

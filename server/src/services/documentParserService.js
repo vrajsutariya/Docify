@@ -3,6 +3,7 @@ import path from 'path';
 import { PDFParse } from 'pdf-parse';
 import mammoth from 'mammoth';
 import { extractTextFromImage } from './ocrService.js';
+import { chunkDocument } from './ragService.js';
 
 /**
  * Heuristic language detector matching Gujarati, Hindi/Devanagari, and English/Latin scripts
@@ -128,7 +129,7 @@ export const parseDocument = async (filePath, mimeType = '', originalName = '') 
 
       if (Array.isArray(parseResult.pages) && parseResult.pages.length > 0) {
         pages = parseResult.pages.map((p, idx) => ({
-          pageNumber: p.num || idx + 1,
+          pageNumber: typeof p.num === 'number' && p.num > 0 ? p.num : idx + 1,
           text: (p.text || '').trim(),
         }));
         extractedText = pages.map((p) => p.text).join('\n\n');
@@ -147,7 +148,9 @@ export const parseDocument = async (filePath, mimeType = '', originalName = '') 
           const imgResult = await parser.getImage();
           if (imgResult && Array.isArray(imgResult.pages) && imgResult.pages.length > 0) {
             const ocrPages = [];
-            for (let i = 0; i < imgResult.pages.length; i++) {
+            // Cap scanned PDF OCR to at most 10 pages to ensure timely processing within timeout
+            const maxPagesToOcr = Math.min(imgResult.pages.length, 10);
+            for (let i = 0; i < maxPagesToOcr; i++) {
               const p = imgResult.pages[i];
               if (p.images && p.images.length > 0) {
                 // Find primary image (largest by byte length, excluding watermarks)
@@ -155,7 +158,7 @@ export const parseDocument = async (filePath, mimeType = '', originalName = '') 
                   ((curr.data?.length || 0) > (prev.data?.length || 0) ? curr : prev)
                 );
                 if (mainImg?.dataUrl) {
-                  console.log(`[DocumentParser] OCR scanning page ${i + 1}/${imgResult.pages.length}...`);
+                  console.log(`[DocumentParser] OCR scanning page ${i + 1}/${maxPagesToOcr}...`);
                   const ocrRes = await extractTextFromImage(mainImg.dataUrl, 'eng+guj+hin');
                   if (ocrRes.text && ocrRes.text.trim()) {
                     ocrPages.push({
@@ -239,13 +242,16 @@ export const parseDocument = async (filePath, mimeType = '', originalName = '') 
   const { wordCount, characterCount, readingTimeMinutes } = calculateTextMetadata(extractedText);
   const detectedLanguage = detectLanguage(extractedText);
 
+  // Generate semantic chunks for each page
+  const chunkedPages = chunkDocument(pages);
+
   console.log(
     `[DocumentParser] Parsed successfully. Words: ${wordCount}, Pages: ${pageCount}, Lang: ${detectedLanguage}, OCR: ${ocrProcessed}`
   );
 
   return {
     extractedText,
-    pages,
+    pages: chunkedPages,
     pageCount,
     wordCount,
     characterCount,

@@ -19,9 +19,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
-import { Button } from '../components/common/Button';
-import { Badge } from '../components/common/Badge';
 import { Dropdown } from '../components/common/Dropdown';
+import { CosmicOrbitalBackground } from '../components/auth/CosmicOrbitalBackground';
 
 export const Register = () => {
   const [name, setName] = useState('');
@@ -48,7 +47,7 @@ export const Register = () => {
     onClick: () => setLanguage(lang.code),
   }));
 
-  // Simple password strength calculator
+  // Password strength calculator
   const getPasswordStrength = () => {
     if (!password) return { score: 0, label: '', color: '' };
     let score = 0;
@@ -58,9 +57,9 @@ export const Register = () => {
     if (/[0-9]/.test(password)) score += 1;
     if (/[^A-Za-z0-9]/.test(password)) score += 1;
 
-    if (score <= 2) return { score, label: 'Weak', color: 'bg-status-error' };
-    if (score <= 3) return { score, label: 'Fair', color: 'bg-status-warning' };
-    return { score, label: 'Strong', color: 'bg-status-success' };
+    if (score <= 2) return { score, label: 'Weak', color: 'bg-red-500' };
+    if (score <= 3) return { score, label: 'Fair', color: 'bg-amber-400' };
+    return { score, label: 'Strong', color: 'bg-cyan-400' };
   };
 
   const strength = getPasswordStrength();
@@ -110,78 +109,68 @@ export const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-light-bg dark:bg-dark-bg text-light-body dark:text-dark-body flex flex-col justify-between transition-colors duration-200">
-      {/* Top Header */}
-      <header className="px-6 py-4 flex items-center justify-between max-w-6xl mx-auto w-full">
+    <div className="relative min-h-screen bg-slate-50 dark:bg-[#030712] text-slate-900 dark:text-slate-100 flex flex-col justify-between overflow-x-hidden selection:bg-cyan-500/30 selection:text-cyan-600 dark:selection:text-cyan-200 transition-colors duration-200">
+      {/* Cosmic background with orbital rings, nodes, and top beam */}
+      <CosmicOrbitalBackground />
+
+      {/* Top Header Bar */}
+      <header className="relative z-20 px-6 py-4 flex items-center justify-between max-w-6xl mx-auto w-full">
         <Link to="/" className="flex items-center gap-2.5 group">
-          <div className="w-8 h-8 rounded-xl bg-cyan-gradient flex items-center justify-center text-black font-heading font-extrabold text-base shadow-sm group-hover:scale-105 transition-transform">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-cyan-300 flex items-center justify-center text-slate-950 font-heading font-black text-base shadow-[0_0_12px_rgba(6,182,212,0.4)] group-hover:scale-105 transition-transform">
             D
           </div>
-          <span className="font-heading font-extrabold text-lg tracking-tight text-light-heading dark:text-dark-heading">
-            Doc<span className="text-accent-dark dark:text-accent-light">ify</span>
+          <span className="font-heading font-extrabold text-lg tracking-tight text-slate-900 dark:text-white">
+            Doc<span className="text-cyan-500 dark:text-cyan-400">ify</span>
           </span>
         </Link>
-
-        <div className="flex items-center gap-2">
-          {/* Language Switcher */}
-          <Dropdown
-            align="right"
-            items={languageDropdownItems}
-            trigger={
-              <button
-                type="button"
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface hover:border-accent text-light-heading dark:text-dark-heading text-xs font-semibold"
-              >
-                <Globe className="w-3.5 h-3.5 text-accent-dark dark:text-accent-light" />
-                <span>{currentLangObj.script}</span>
-              </button>
-            }
-          />
-
-          {/* Theme Toggle */}
-          <button
-            type="button"
-            onClick={toggleTheme}
-            aria-label="Toggle Theme"
-            className="p-2 rounded-xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface text-light-heading dark:text-dark-heading hover:border-accent"
-          >
-            {isDark ? <Sun className="w-4 h-4 text-accent-light" /> : <Moon className="w-4 h-4 text-accent-dark" />}
-          </button>
-        </div>
       </header>
 
-      {/* Main Register Card */}
-      <main className="flex-1 flex items-center justify-center px-4 py-8">
+      {/* Main Content Area */}
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-6 sm:py-10">
+        {/* Brand Headline (Matching Screenshot Typography) */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: 'easeOut' }}
-          className="w-full max-w-md"
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+          className="text-center mb-6 sm:mb-8"
         >
-          <div className="bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border rounded-2xl p-6 sm:p-8 shadow-soft dark:shadow-soft-dark space-y-6">
-            <div className="text-center space-y-1.5">
-              <div className="inline-flex justify-center mb-2">
-                <Badge variant="brand" size="sm">
-                  <Sparkles className="w-3 h-3" />
-                  Free 14-Day Full Access
-                </Badge>
-              </div>
-              <h1 className="font-heading font-extrabold text-2xl text-light-heading dark:text-dark-heading tracking-tight">
+          <h1 className="font-heading font-black text-3xl sm:text-4xl md:text-5xl tracking-tight bg-gradient-to-r from-cyan-400 via-cyan-300 to-teal-200 bg-clip-text text-transparent drop-shadow-[0_0_24px_rgba(6,182,212,0.45)]">
+            Docify
+          </h1>
+          <p className="font-heading font-bold text-lg sm:text-xl md:text-2xl text-white tracking-tight mt-1.5">
+            One platform.
+          </p>
+          <p className="font-heading font-semibold text-xs sm:text-sm text-cyan-400 tracking-wider mt-0.5">
+            End-to-End Operations.
+          </p>
+        </motion.div>
+
+        {/* Central Glassmorphic Card */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96, y: 12 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+          className="w-full max-w-[460px]"
+        >
+          <div className="bg-[#0b1329]/80 backdrop-blur-xl border border-cyan-500/25 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-[0_0_45px_rgba(6,182,212,0.12)] space-y-5">
+            {/* Card Header */}
+            <div className="text-center space-y-1">
+              <h2 className="font-heading font-bold text-xl text-white tracking-tight">
                 {t('auth.registerTitle', 'Create Your Account')}
-              </h1>
-              <p className="text-xs text-light-body dark:text-dark-body">
-                {t('auth.registerSubtitle', 'Start unlocking document & data intelligence with AI in seconds')}
+              </h2>
+              <p className="text-xs text-slate-400">
+                {t('auth.registerSubtitle', 'Start unlocking document & data intelligence with AI')}
               </p>
             </div>
 
-            {/* Error Message */}
+            {/* Error Notice */}
             <AnimatePresence>
               {errorMessage && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="p-3 rounded-xl bg-status-error/10 border border-status-error/20 flex items-start gap-2.5 text-xs text-status-error"
+                  className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 flex items-start gap-2.5 text-xs text-red-400"
                 >
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>{errorMessage}</span>
@@ -190,62 +179,59 @@ export const Register = () => {
             </AnimatePresence>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3.5">
               {/* Full Name */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-light-heading dark:text-dark-heading">
+                <label className="block text-xs font-semibold text-slate-300">
                   {t('auth.fullNameLabel', 'Full Name')}
                 </label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-light-body dark:text-dark-body absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder={t('auth.fullNamePlaceholder', 'e.g. John Doe')}
-                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-heading dark:text-dark-heading text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                    placeholder={t('auth.fullNamePlaceholder', 'Enter your full name')}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700/70 bg-[#060b1b]/80 text-slate-100 placeholder-slate-500 text-xs sm:text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
                   />
                 </div>
               </div>
 
-              {/* Email Address */}
+              {/* Email */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-light-heading dark:text-dark-heading">
+                <label className="block text-xs font-semibold text-slate-300">
                   {t('auth.emailLabel', 'Email Address')}
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-light-body dark:text-dark-body absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder={t('auth.emailPlaceholder', 'name@example.com')}
-                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-heading dark:text-dark-heading text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                    placeholder={t('auth.emailPlaceholder', 'Enter your email')}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700/70 bg-[#060b1b]/80 text-slate-100 placeholder-slate-500 text-xs sm:text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
                   />
                 </div>
               </div>
 
               {/* Password */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-light-heading dark:text-dark-heading">
+                <label className="block text-xs font-semibold text-slate-300">
                   {t('auth.passwordLabel', 'Password')}
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-light-body dark:text-dark-body absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={t('auth.passwordPlaceholder', 'At least 6 characters')}
-                    className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-heading dark:text-dark-heading text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                    className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-slate-700/70 bg-[#060b1b]/80 text-slate-100 placeholder-slate-500 text-xs sm:text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-light-body dark:text-dark-body hover:text-light-heading dark:hover:text-dark-heading"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition-colors"
                     aria-label="Toggle password visibility"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -256,10 +242,10 @@ export const Register = () => {
                 {password && (
                   <div className="space-y-1 pt-1">
                     <div className="flex items-center justify-between text-[10px]">
-                      <span className="text-light-body dark:text-dark-body">Strength:</span>
-                      <span className="font-semibold">{strength.label}</span>
+                      <span className="text-slate-400">Strength:</span>
+                      <span className="font-semibold text-cyan-300">{strength.label}</span>
                     </div>
-                    <div className="h-1 w-full bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                    <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
                       <div
                         className={`h-full transition-all duration-300 ${strength.color}`}
                         style={{ width: `${(strength.score / 5) * 100}%` }}
@@ -271,26 +257,25 @@ export const Register = () => {
 
               {/* Confirm Password */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-light-heading dark:text-dark-heading">
+                <label className="block text-xs font-semibold text-slate-300">
                   {t('auth.confirmPasswordLabel', 'Confirm Password')}
                 </label>
                 <div className="relative">
-                  <ShieldCheck className="w-4 h-4 text-light-body dark:text-dark-body absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder={t('auth.confirmPasswordPlaceholder', 'Re-enter your password')}
-                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg text-light-heading dark:text-dark-heading text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700/70 bg-[#060b1b]/80 text-slate-100 placeholder-slate-500 text-xs sm:text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
                   />
                 </div>
               </div>
 
-              {/* Preferred Language Selector directly in registration */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-light-heading dark:text-dark-heading">
-                  {t('auth.preferredLanguage', 'Preferred Interface Language')}
+              {/* Preferred Language Selector */}
+              <div className="space-y-1.5 pt-0.5">
+                <label className="block text-xs font-semibold text-slate-300">
+                  {t('auth.preferredLanguage', 'Interface Language')}
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {languages.map((l) => (
@@ -300,58 +285,66 @@ export const Register = () => {
                       onClick={() => setSelectedLanguage(l.code)}
                       className={`p-2 rounded-xl border text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${
                         selectedLanguage === l.code
-                          ? 'border-accent bg-accent/10 text-accent-dark dark:text-accent-light font-bold'
-                          : 'border-light-border dark:border-dark-border hover:border-accent/40 text-light-body dark:text-dark-body'
+                          ? 'border-cyan-400 bg-cyan-500/15 text-cyan-300 font-bold shadow-[0_0_10px_rgba(6,182,212,0.2)]'
+                          : 'border-slate-800 bg-[#060b1b]/60 text-slate-400 hover:border-cyan-500/30 hover:text-slate-200'
                       }`}
                     >
-                      {selectedLanguage === l.code && <Check className="w-3 h-3 text-accent" />}
+                      {selectedLanguage === l.code && <Check className="w-3 h-3 text-cyan-400" />}
                       <span>{l.nativeName}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Submit Button */}
-              <Button
+              {/* Submit Button (Cyan) */}
+              <button
                 type="submit"
-                variant="primary"
-                size="lg"
-                isLoading={isSubmitting}
-                className="w-full mt-2"
-                rightIcon={ArrowRight}
+                disabled={isSubmitting}
+                className="w-full mt-2 py-3 px-4 rounded-xl font-bold text-sm bg-cyan-400 hover:bg-cyan-300 text-slate-950 shadow-[0_0_22px_rgba(6,182,212,0.4)] hover:shadow-[0_0_30px_rgba(6,182,212,0.65)] active:scale-[0.99] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {t('auth.signUpButton', 'Create Free Account')}
-              </Button>
+                {isSubmitting ? (
+                  <span className="inline-block w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <span>{t('auth.signUpButton', 'Create Free Account')}</span>
+                    <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                  </>
+                )}
+              </button>
 
               {/* Divider */}
               <div className="relative flex py-1 items-center">
-                <div className="flex-grow border-t border-light-border dark:border-dark-border"></div>
-                <span className="flex-shrink mx-3 text-[11px] text-light-body/70 dark:text-dark-body/70 uppercase font-mono tracking-wider">
+                <div className="flex-grow border-t border-slate-800"></div>
+                <span className="flex-shrink mx-3 text-[10px] text-slate-500 uppercase font-mono tracking-wider">
                   {t('auth.orDivider', 'Or explore first')}
                 </span>
-                <div className="flex-grow border-t border-light-border dark:border-dark-border"></div>
+                <div className="flex-grow border-t border-slate-800"></div>
               </div>
 
               {/* Guest / Demo Access Button */}
-              <Button
+              <button
                 type="button"
-                variant="outline"
-                size="md"
                 onClick={handleGuestExplore}
-                isLoading={isGuestSubmitting}
-                className="w-full border-dashed border-accent/40 hover:border-accent text-accent-dark dark:text-accent-light bg-accent/5 hover:bg-accent/10"
-                leftIcon={Sparkles}
+                disabled={isGuestSubmitting}
+                className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold border border-dashed border-cyan-500/40 hover:border-cyan-400 text-cyan-300 bg-cyan-500/5 hover:bg-cyan-500/15 backdrop-blur-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
               >
-                {t('auth.guestButton', 'Explore as Guest (No Login Required)')}
-              </Button>
+                {isGuestSubmitting ? (
+                  <span className="inline-block w-3.5 h-3.5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>{t('auth.guestButton', 'Explore as Guest (No Login Required)')}</span>
+                  </>
+                )}
+              </button>
             </form>
 
             {/* Switch to Login */}
-            <div className="pt-2 text-center border-t border-light-border dark:border-dark-border text-xs text-light-body dark:text-dark-body">
+            <div className="pt-2 text-center border-t border-slate-800/80 text-xs text-slate-400">
               <span>{t('auth.alreadyHaveAccount', 'Already have an account?')} </span>
               <Link
                 to="/login"
-                className="font-semibold text-accent-dark dark:text-accent-light hover:underline ml-1"
+                className="font-semibold text-cyan-400 hover:text-cyan-300 hover:underline ml-1"
               >
                 {t('auth.signInButton', 'Sign In')}
               </Link>
@@ -361,8 +354,8 @@ export const Register = () => {
       </main>
 
       {/* Mini Footer */}
-      <footer className="py-4 text-center text-xs text-light-body/60 dark:text-dark-body/60 font-mono">
-        Docify © {new Date().getFullYear()} — Secure Registration & Preferences
+      <footer className="relative z-20 py-4 text-center text-xs text-slate-500">
+        © {new Date().getFullYear()} Docify. All rights reserved.
       </footer>
     </div>
   );

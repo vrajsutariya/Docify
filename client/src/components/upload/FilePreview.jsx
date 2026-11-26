@@ -154,23 +154,25 @@ export const FilePreview = ({
         )}
       </div>
 
-      {/* Upload Progress Bar */}
+      {/* Upload & AI Processing Progress Bar */}
       {uploading && (
         <div className="mt-4 space-y-1.5">
           <div className="flex items-center justify-between text-xs font-medium">
             <span className="text-light-heading dark:text-dark-heading flex items-center gap-1.5">
               <span className="inline-block w-2 h-2 rounded-full bg-brand-orange animate-ping" />
-              Uploading & parsing document...
+              {progress < 100
+                ? `Uploading document (${progress}%)...`
+                : 'Processing & extracting text with AI... (this may take a moment for large PDFs)'}
             </span>
             <span className="font-mono text-brand-red dark:text-brand-orangeBright font-bold">
-              {progress}%
+              {progress < 100 ? `${progress}%` : 'Processing'}
             </span>
           </div>
           <div className="w-full h-2 rounded-full bg-light-border dark:bg-dark-border overflow-hidden">
             <motion.div
               className="h-full rounded-full bg-gradient-to-r from-brand-red via-brand-orange to-brand-orangeBright shadow-glow-red"
               initial={{ width: '0%' }}
-              animate={{ width: `${progress}%` }}
+              animate={{ width: progress < 100 ? `${progress}%` : '100%' }}
               transition={{ ease: 'easeOut', duration: 0.3 }}
             />
           </div>
