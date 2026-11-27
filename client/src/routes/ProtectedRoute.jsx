@@ -9,8 +9,12 @@ export const ProtectedRoute = ({ children }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-black text-light-body dark:text-dark-body">
-        <Loader size="lg" label="Authenticating session..." />
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-black text-light-body dark:text-dark-body p-6">
+        <Loader
+          size="lg"
+          label="Authenticating Docify Session..."
+          sublabel="Initializing AI intelligence modules & workspace"
+        />
       </div>
     );
   }

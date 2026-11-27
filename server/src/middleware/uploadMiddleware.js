@@ -19,6 +19,7 @@ const ALLOWED_MIME_TYPES = [
   'text/csv',
   'application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/json',
   'image/jpeg',
   'image/png',
   'image/webp',
@@ -33,6 +34,7 @@ const ALLOWED_EXTENSIONS = [
   '.csv',
   '.xlsx',
   '.xls',
+  '.json',
   '.png',
   '.jpg',
   '.jpeg',
@@ -98,6 +100,32 @@ export const handleSingleUpload = (fieldName = 'file') => {
           return errorResponse(res, err.message || 'File upload error occurred.', 400);
         }
         return errorResponse(res, err.message || 'Failed to process file upload.', 400);
+      }
+      next();
+    });
+  };
+};
+
+/**
+ * Express middleware wrapper for handling multiple Multer uploads
+ */
+export const handleMultipleUpload = (fieldName = 'files', maxCount = 20) => {
+  const uploadArray = upload.array(fieldName, maxCount);
+
+  return (req, res, next) => {
+    if (req.setTimeout) {
+      req.setTimeout(300000);
+    }
+
+    uploadArray(req, res, (err) => {
+      if (err) {
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return errorResponse(res, 'One or more files exceed the 50 MB limit.', 400);
+          }
+          return errorResponse(res, err.message || 'File upload error occurred.', 400);
+        }
+        return errorResponse(res, err.message || 'Failed to process files upload.', 400);
       }
       next();
     });

@@ -26,7 +26,17 @@ api.interceptors.response.use(
     // Return standard response structure
     return response.data;
   },
-  (error) => {
+  async (error) => {
+    // If response is a Blob containing error JSON, parse it
+    let serverMessage = error.response?.data?.message;
+    if (!serverMessage && error.response?.data instanceof Blob) {
+      try {
+        const text = await error.response.data.text();
+        const parsed = JSON.parse(text);
+        serverMessage = parsed.message;
+      } catch (_) {}
+    }
+
     // If 401 Unauthorized occurs on protected routes (not login/register)
     if (error.response?.status === 401) {
       const isAuthEndpoint =
@@ -43,14 +53,14 @@ api.interceptors.response.use(
       }
     }
 
-    let message = error.response?.data?.message || error.message || 'An unexpected error occurred.';
+    let message = serverMessage || error.message || 'An unexpected error occurred.';
     if (error.code === 'ECONNABORTED' || (error.message && error.message.toLowerCase().includes('timeout'))) {
       message = 'Document processing timed out. Large or scanned PDFs may take longer to process. Please retry or upload an optimized PDF.';
     } else if (error.code === 'ERR_NETWORK' || message === 'Network Error') {
       message = 'Backend API server unreachable (http://localhost:5000). Please ensure server is running.';
     }
 
-    const errorPayload = error.response?.data || {
+    const errorPayload = {
       success: false,
       message,
     };

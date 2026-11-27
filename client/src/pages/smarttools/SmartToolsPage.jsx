@@ -28,253 +28,319 @@ import {
   Receipt,
   Stamp,
   CheckCircle2,
+  PenTool,
+  GitCompare,
+  Archive,
+  Hash,
+  Languages,
+  Tag,
+  Briefcase,
+  Sliders,
+  Type,
+  Presentation,
+  FileCode,
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import {
+  PdfMergeTool,
+  PdfSplitTool,
+  PdfWatermarkTool,
+  PdfEditorTool,
+  FormatConverterTool,
+  ImageOptimizerTool,
+  QrCodeTool,
+  WordCounterTool,
+  AiQuickTools,
+  GenericToolWorkspace,
+} from '../../components/smarttools';
 
 export const SmartToolsPage = () => {
   const { t } = useLanguage();
-  const [activeCategory, setActiveCategory] = useState('All');
+  const [activeCategory, setActiveCategory] = useState('All Tools');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTool, setSelectedTool] = useState(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [processSuccess, setProcessSuccess] = useState(false);
 
+  // Complete 26 Tools Definition across 5 Categories
   const toolsList = [
-    // PDF Manipulation
+    /* -------------------------- CATEGORY 1: PDF TOOLS ------------------------- */
     {
-      id: 'merge-pdfs',
-      name: 'Merge PDFs',
-      category: 'PDF Manipulation',
+      id: 'edit-pdf',
+      name: 'Edit PDF',
+      category: 'PDF Tools',
+      icon: PenTool,
+      color: 'text-cyan-500 bg-cyan-500/10 border-cyan-500/20',
+      badge: 'Interactive',
+      description: 'Add custom text, highlight passages, whiteout redaction, shapes, freehand drawing, and status stamps.',
+      acceptedFiles: '.pdf',
+    },
+    {
+      id: 'merge-pdf',
+      name: 'Merge PDF',
+      category: 'PDF Tools',
       icon: Layers,
       color: 'text-blue-500 bg-blue-500/10 border-blue-500/20',
       badge: 'Popular',
-      description: 'Combine multiple PDF documents into a single organized file in custom order.',
+      description: 'Drag-and-drop multiple PDFs, visual reordering, merge into a single PDF.',
       acceptedFiles: '.pdf',
     },
     {
       id: 'split-pdf',
       name: 'Split PDF',
-      category: 'PDF Manipulation',
+      category: 'PDF Tools',
       icon: Scissors,
       color: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
       badge: 'Fast',
-      description: 'Extract specific page ranges or separate individual pages into separate files.',
+      description: 'Visual page thumbnail grid to split by custom page range, every N pages, or selected pages.',
       acceptedFiles: '.pdf',
     },
     {
-      id: 'compress-pdf',
-      name: 'Compress PDF',
-      category: 'PDF Manipulation',
-      icon: Minimize2,
-      color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
-      badge: 'High Ratio',
-      description: 'Reduce file size up to 80% while preserving crisp text and image resolution.',
-      acceptedFiles: '.pdf',
-    },
-    {
-      id: 'reorder-pages',
-      name: 'Reorder Pages',
-      category: 'PDF Manipulation',
+      id: 'rearrange-pages',
+      name: 'Extract / Delete / Rearrange Pages',
+      category: 'PDF Tools',
       icon: RefreshCw,
       color: 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20',
       badge: 'Visual',
-      description: 'Drag, drop, and rearrange page sequences in your document with live preview.',
+      description: 'Interactive grid allowing users to delete individual pages, reorder, or extract chosen pages.',
       acceptedFiles: '.pdf',
     },
     {
-      id: 'rotate-pages',
-      name: 'Rotate Pages',
-      category: 'PDF Manipulation',
+      id: 'rotate-pdf',
+      name: 'Rotate PDF Pages',
+      category: 'PDF Tools',
       icon: RotateCw,
       color: 'text-purple-500 bg-purple-500/10 border-purple-500/20',
-      badge: '90°/180°',
-      description: 'Rotate portrait and landscape pages clockwise or counter-clockwise quickly.',
+      badge: '90° / 180°',
+      description: '90°, 180°, 270° orientation rotation per page or for all pages simultaneously.',
       acceptedFiles: '.pdf',
     },
     {
-      id: 'delete-pages',
-      name: 'Delete Pages',
-      category: 'PDF Manipulation',
-      icon: Trash2,
-      color: 'text-red-500 bg-red-500/10 border-red-500/20',
-      badge: 'Clean',
-      description: 'Remove unwanted, blank, or duplicate pages from any PDF document.',
-      acceptedFiles: '.pdf',
-    },
-
-    // Security & Integrity
-    {
-      id: 'protect-pdf',
-      name: 'Protect PDF (Password)',
-      category: 'Security & Integrity',
+      id: 'protect-unlock-pdf',
+      name: 'Protect & Unlock PDF',
+      category: 'PDF Tools',
       icon: Lock,
       color: 'text-rose-500 bg-rose-500/10 border-rose-500/20',
       badge: 'AES-256',
-      description: 'Encrypt your document with high-grade password and prevent unauthorized reading.',
-      acceptedFiles: '.pdf',
-    },
-    {
-      id: 'unlock-pdf',
-      name: 'Unlock PDF',
-      category: 'Security & Integrity',
-      icon: Unlock,
-      color: 'text-teal-500 bg-teal-500/10 border-teal-500/20',
-      badge: 'Instant',
-      description: 'Remove password restrictions and printing locks from authorized PDF files.',
-      acceptedFiles: '.pdf',
-    },
-    {
-      id: 'digital-signature',
-      name: 'Digital Signature',
-      category: 'Security & Integrity',
-      icon: ShieldCheck,
-      color: 'text-cyan-500 bg-cyan-500/10 border-cyan-500/20',
-      badge: 'Legal',
-      description: 'Sign documents digitally with verifiable timestamped cryptographic signatures.',
+      description: 'Encrypt with password or remove password restriction from an owned PDF.',
       acceptedFiles: '.pdf',
     },
     {
       id: 'watermark-pdf',
-      name: 'Watermark PDF',
-      category: 'Security & Integrity',
+      name: 'Add Watermark',
+      category: 'PDF Tools',
       icon: Stamp,
       color: 'text-orange-500 bg-orange-500/10 border-orange-500/20',
       badge: 'Branding',
-      description: 'Stamp custom text, confidentiality marks, or company logos across all pages.',
+      description: 'Custom diagonal or centered text ("CONFIDENTIAL", "DRAFT") or logo with opacity and size sliders.',
       acceptedFiles: '.pdf',
     },
     {
-      id: 'redact-pii',
-      name: 'Redact Sensitive PII',
-      category: 'Security & Integrity',
-      icon: EyeOff,
-      color: 'text-zinc-500 bg-zinc-500/10 border-zinc-500/20',
-      badge: 'Privacy',
-      description: 'Permanently black out sensitive names, credit card numbers, and confidential text.',
+      id: 'page-numbers',
+      name: 'Page Numbers, Header & Footer',
+      category: 'PDF Tools',
+      icon: Type,
+      color: 'text-teal-500 bg-teal-500/10 border-teal-500/20',
+      badge: 'Numbered',
+      description: 'Insert page numbering (e.g. "Page X of Y") at top/bottom, left/center/right.',
+      acceptedFiles: '.pdf',
+    },
+    {
+      id: 'crop-pdf',
+      name: 'Crop PDF Pages',
+      category: 'PDF Tools',
+      icon: Sliders,
+      color: 'text-cyan-500 bg-cyan-500/10 border-cyan-500/20',
+      badge: 'Precision',
+      description: 'Trim margins or crop pages to a specified bounding box and dimension.',
       acceptedFiles: '.pdf',
     },
 
-    // Converters
+    /* ------------------------ CATEGORY 2: CONVERT TOOLS ----------------------- */
     {
-      id: 'pdf-to-word',
-      name: 'PDF to Word',
-      category: 'Converters',
+      id: 'pdf-word',
+      name: 'PDF ↔ Word',
+      category: 'Convert Tools',
       icon: FileText,
       color: 'text-blue-600 bg-blue-600/10 border-blue-600/20',
       badge: 'DOCX',
-      description: 'Convert PDF files into fully editable Microsoft Word documents with matched fonts.',
-      acceptedFiles: '.pdf',
+      description: 'Convert PDF to editable .docx and Word documents to print-ready PDF.',
+      acceptedFiles: '.pdf,.doc,.docx',
     },
     {
-      id: 'word-to-pdf',
-      name: 'Word to PDF',
-      category: 'Converters',
-      icon: FileText,
-      color: 'text-sky-500 bg-sky-500/10 border-sky-500/20',
-      badge: 'Universal',
-      description: 'Transform DOCX and DOC files into clean, print-standard PDF documents.',
-      acceptedFiles: '.doc,.docx',
-    },
-    {
-      id: 'pdf-to-excel',
-      name: 'PDF to Excel',
-      category: 'Converters',
+      id: 'pdf-excel',
+      name: 'PDF ↔ Excel',
+      category: 'Convert Tools',
       icon: FileSpreadsheet,
       color: 'text-emerald-600 bg-emerald-600/10 border-emerald-600/20',
       badge: 'XLSX',
-      description: 'Automatically extract tabular figures and borders into structured Excel spreadsheets.',
-      acceptedFiles: '.pdf',
+      description: 'Extract tables from PDF into .xlsx and save Excel sheets as paginated PDF.',
+      acceptedFiles: '.pdf,.xlsx,.xls',
     },
     {
-      id: 'excel-to-pdf',
-      name: 'Excel to PDF',
-      category: 'Converters',
-      icon: FileSpreadsheet,
-      color: 'text-green-500 bg-green-500/10 border-green-500/20',
-      badge: 'Tables',
-      description: 'Export large spreadsheets and financial reports into perfectly paginated PDFs.',
-      acceptedFiles: '.xls,.xlsx,.csv',
+      id: 'pdf-powerpoint',
+      name: 'PDF ↔ PowerPoint',
+      category: 'Convert Tools',
+      icon: Presentation,
+      color: 'text-amber-600 bg-amber-600/10 border-amber-600/20',
+      badge: 'Slides',
+      description: 'Convert slide decks between PDF and presentation slide outlines.',
+      acceptedFiles: '.pdf,.pptx',
     },
     {
-      id: 'pdf-to-images',
-      name: 'PDF to Images',
-      category: 'Converters',
+      id: 'pdf-images',
+      name: 'PDF ↔ JPG/PNG',
+      category: 'Convert Tools',
       icon: Image,
-      color: 'text-violet-500 bg-violet-500/10 border-violet-500/20',
-      badge: '300 DPI',
-      description: 'Extract every page as high-resolution PNG, JPG, or WebP graphics.',
-      acceptedFiles: '.pdf',
+      color: 'text-violet-600 bg-violet-600/10 border-violet-600/20',
+      badge: 'Batch Render',
+      description: 'Render PDF pages into high-res images or combine multiple images into a PDF.',
+      acceptedFiles: '.pdf,.png,.jpg,.jpeg,.webp',
     },
     {
-      id: 'images-to-pdf',
-      name: 'Images to PDF',
-      category: 'Converters',
-      icon: Image,
-      color: 'text-fuchsia-500 bg-fuchsia-500/10 border-fuchsia-500/20',
-      badge: 'Batch',
-      description: 'Combine JPG, PNG, and scanned photos into a clean multi-page PDF.',
-      acceptedFiles: '.png,.jpg,.jpeg,.webp',
+      id: 'html-to-pdf',
+      name: 'HTML to PDF',
+      category: 'Convert Tools',
+      icon: FileCode,
+      color: 'text-orange-600 bg-orange-600/10 border-orange-600/20',
+      badge: 'Web Styles',
+      description: 'Convert raw HTML or web page snippets into clean, styled, paginated PDFs.',
+      acceptedFiles: '.html,.txt',
+    },
+    {
+      id: 'csv-excel-json',
+      name: 'CSV / Excel / JSON Conversion',
+      category: 'Convert Tools',
+      icon: RefreshCw,
+      color: 'text-teal-600 bg-teal-600/10 border-teal-600/20',
+      badge: 'Tabular',
+      description: 'Bi-directional conversion between tabular CSV, Excel spreadsheets, and JSON objects.',
+      acceptedFiles: '.csv,.xlsx,.json',
     },
 
-    // OCR & Utilities
+    /* ---------------------- CATEGORY 3: IMAGE & OCR TOOLS --------------------- */
     {
-      id: 'ocr-extractor',
-      name: 'OCR Text Extractor',
-      category: 'OCR & Utilities',
+      id: 'ocr-tool',
+      name: 'OCR Tool',
+      category: 'Image & OCR',
       icon: Scan,
       color: 'text-brand-orange bg-brand-orange/10 border-brand-orange/20',
+      badge: 'Searchable',
+      description: 'Extract selectable, searchable text from scanned papers and documents.',
+      acceptedFiles: '.png,.jpg,.jpeg,.pdf',
+    },
+    {
+      id: 'image-compress-resize',
+      name: 'Image Compress, Resize & Convert',
+      category: 'Image & OCR',
+      icon: Image,
+      color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
+      badge: 'Sharp Engine',
+      description: 'Batch resize dimensions, compress file size, and switch formats between JPG, PNG, and WebP.',
+      acceptedFiles: '.png,.jpg,.jpeg,.webp',
+    },
+    {
+      id: 'image-to-text',
+      name: 'Image to Text (Multilingual)',
+      category: 'Image & OCR',
+      icon: Scan,
+      color: 'text-cyan-600 bg-cyan-600/10 border-cyan-600/20',
       badge: 'EN / GU / HI',
-      description: 'Recognize printed and handwritten text across English, Gujarati, and Hindi.',
-      acceptedFiles: '.pdf,.png,.jpg,.jpeg',
+      description: 'Multilingual OCR extracting text across English, Gujarati, and Hindi scripts.',
+      acceptedFiles: '.png,.jpg,.jpeg',
+    },
+
+    /* -------------------------- CATEGORY 4: AI TOOLS -------------------------- */
+    {
+      id: 'ai-summarizer',
+      name: 'AI Summarizer',
+      category: 'AI Tools',
+      icon: Sparkles,
+      color: 'text-accent-dark dark:text-accent-light bg-accent/10 border-accent/20',
+      badge: 'Instant AI',
+      description: 'Paste raw text or upload a document for a quick summary without full DocuMind processing.',
+      acceptedFiles: '.txt,.pdf,.docx',
     },
     {
-      id: 'receipt-scanner',
-      name: 'Invoice / Receipt Scanner',
-      category: 'OCR & Utilities',
-      icon: Receipt,
-      color: 'text-amber-600 bg-amber-600/10 border-amber-600/20',
-      badge: 'AI Parse',
-      description: 'Auto-extract merchant names, tax figures, total cost, and invoice dates.',
-      acceptedFiles: '.pdf,.png,.jpg,.jpeg',
+      id: 'ai-translator',
+      name: 'AI Translator',
+      category: 'AI Tools',
+      icon: Languages,
+      color: 'text-blue-500 bg-blue-500/10 border-blue-500/20',
+      badge: 'Tri-Lingual',
+      description: 'Translate entire documents or text snippets between English, Gujarati, and Hindi.',
+      acceptedFiles: '.txt,.pdf',
     },
     {
-      id: 'qr-generator',
-      name: 'QR Code Generator',
-      category: 'OCR & Utilities',
+      id: 'ai-grammar',
+      name: 'AI Grammar & Paraphrase Checker',
+      category: 'AI Tools',
+      icon: CheckCircle2,
+      color: 'text-teal-500 bg-teal-500/10 border-teal-500/20',
+      badge: 'Tone Match',
+      description: 'Correct spelling/grammar and provide tone paraphrasing (Formal, Academic, Concise).',
+      acceptedFiles: '.txt',
+    },
+    {
+      id: 'ai-title-keywords',
+      name: 'AI Title & Keyword Generator',
+      category: 'AI Tools',
+      icon: Tag,
+      color: 'text-purple-500 bg-purple-500/10 border-purple-500/20',
+      badge: 'SEO Tags',
+      description: 'Suggest SEO titles and core metadata keywords for papers and document content.',
+      acceptedFiles: '.txt,.pdf',
+    },
+
+    /* ------------------------ CATEGORY 5: UTILITY TOOLS ----------------------- */
+    {
+      id: 'qr-generator-scanner',
+      name: 'QR Code Generator & Scanner',
+      category: 'Utilities',
       icon: QrCode,
       color: 'text-accent-dark dark:text-accent-light bg-accent/10 border-accent/20',
-      badge: 'Vector',
-      description: 'Create custom scannable QR codes for URLs, text notes, Wi-Fi, and contact cards.',
+      badge: 'Vector/PNG',
+      description: 'Generate custom QR codes (with color pickers and size controls) and scan QR images.',
       acceptedFiles: '*',
     },
     {
-      id: 'qr-reader',
-      name: 'QR Code Reader',
-      category: 'OCR & Utilities',
-      icon: Scan,
-      color: 'text-cyan-600 bg-cyan-600/10 border-cyan-600/20',
-      badge: 'Instant',
-      description: 'Upload any image or screenshot to decode embedded QR code data and URLs instantly.',
-      acceptedFiles: '.png,.jpg,.jpeg,.webp',
+      id: 'file-renamer',
+      name: 'File Renamer',
+      category: 'Utilities',
+      icon: FileText,
+      color: 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20',
+      badge: 'Custom Name',
+      description: 'Upload any file, choose a custom new name, optional prefix/suffix, live preview, and download instantly.',
+      acceptedFiles: '*',
     },
     {
-      id: 'checksum-validator',
-      name: 'Checksum Validator',
-      category: 'OCR & Utilities',
-      icon: ShieldCheck,
+      id: 'bulk-zip-download',
+      name: 'Bulk ZIP Download',
+      category: 'Utilities',
+      icon: Archive,
+      color: 'text-violet-500 bg-violet-500/10 border-violet-500/20',
+      badge: 'Batch ZIP',
+      description: 'Compress and bundle multiple documents, images, or PDFs into a single downloadable ZIP archive.',
+      acceptedFiles: '*',
+    },
+    {
+      id: 'word-counter',
+      name: 'Word, Character & Reading-Time Counter',
+      category: 'Utilities',
+      icon: Hash,
       color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
-      badge: 'SHA-256',
-      description: 'Verify file integrity and authenticity using SHA-256 and MD5 cryptographic hashes.',
+      badge: 'Live Metrics',
+      description: 'Real-time text analytics dashboard showing word count, characters, sentences, and reading time.',
       acceptedFiles: '*',
     },
   ];
 
-  const categories = ['All', 'PDF Manipulation', 'Security & Integrity', 'Converters', 'OCR & Utilities'];
+  const categories = ['All Tools', 'PDF Tools', 'Convert Tools', 'Image & OCR', 'AI Tools', 'Utilities'];
 
   // Filter tools based on category and search query
   const filteredTools = useMemo(() => {
     return toolsList.filter((tool) => {
-      const matchesCategory = activeCategory === 'All' || tool.category === activeCategory;
+      const matchesCategory =
+        activeCategory === 'All Tools' ||
+        tool.category.toLowerCase().includes(activeCategory.toLowerCase().replace(' tools', ''));
       const matchesSearch =
         tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         tool.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -285,16 +351,51 @@ export const SmartToolsPage = () => {
 
   const handleLaunchTool = (tool) => {
     setSelectedTool(tool);
-    setProcessSuccess(false);
-    setIsProcessing(false);
   };
 
-  const handleProcessTool = () => {
-    setIsProcessing(true);
-    setTimeout(() => {
-      setIsProcessing(false);
-      setProcessSuccess(true);
-    }, 1200);
+  // Render the dedicated interactive sub-tool view inside the Modal
+  const renderToolWorkspace = () => {
+    if (!selectedTool) return null;
+
+    switch (selectedTool.id) {
+      case 'edit-pdf':
+        return <PdfEditorTool />;
+      case 'merge-pdf':
+        return <PdfMergeTool />;
+      case 'split-pdf':
+      case 'rearrange-pages':
+        return <PdfSplitTool />;
+      case 'watermark-pdf':
+        return <PdfWatermarkTool />;
+      case 'pdf-word':
+        return <FormatConverterTool defaultConversion="pdf-to-word" />;
+      case 'pdf-excel':
+        return <FormatConverterTool defaultConversion="pdf-to-excel" />;
+      case 'pdf-powerpoint':
+      case 'html-to-pdf':
+        return <FormatConverterTool defaultConversion="pdf-to-word" />;
+      case 'pdf-images':
+        return <FormatConverterTool defaultConversion="images-to-pdf" />;
+      case 'csv-excel-json':
+        return <FormatConverterTool defaultConversion="csv-to-json" />;
+      case 'image-compress-resize':
+        return <ImageOptimizerTool />;
+      case 'qr-generator-scanner':
+        return <QrCodeTool />;
+      case 'word-counter':
+        return <WordCounterTool />;
+      case 'ai-summarizer':
+        return <AiQuickTools initialTool="summary" />;
+      case 'ai-translator':
+        return <AiQuickTools initialTool="translate" />;
+      case 'ai-grammar':
+        return <AiQuickTools initialTool="grammar" />;
+      case 'ai-title-keywords':
+        return <AiQuickTools initialTool="keywords" />;
+      default:
+        // Generic interactive handler for rotate, protect, unlock, page-numbers, crop, bulk-rename, ocr
+        return <GenericToolWorkspace toolId={selectedTool.id} />;
+    }
   };
 
   return (
@@ -313,7 +414,7 @@ export const SmartToolsPage = () => {
           <p className="text-xs sm:text-sm text-light-body dark:text-dark-body max-w-2xl">
             {t(
               'modules.smarttoolsDesc',
-              'Individual precision utilities for document conversion, page manipulation, security encryption, and OCR scanning.'
+              'High-speed precision utilities for binary PDF manipulation, bi-directional conversions, multilingual OCR scanning, and instant AI file workflows.'
             )}
           </p>
         </div>
@@ -323,10 +424,10 @@ export const SmartToolsPage = () => {
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-light-body dark:text-dark-body" />
           <input
             type="text"
-            placeholder="Search tools (e.g. Merge, Password)..."
+            placeholder="Search all 31 tools (e.g. Merge, Sign)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3.5 py-2 rounded-xl text-xs sm:text-sm bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border text-light-heading dark:text-dark-heading focus:outline-none focus:ring-2 focus:ring-accent"
+            className="w-full pl-9 pr-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border text-light-heading dark:text-dark-heading focus:outline-none focus:ring-2 focus:ring-accent"
           />
         </div>
       </div>
@@ -334,21 +435,32 @@ export const SmartToolsPage = () => {
       {/* Category Filter Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
         {categories.map((cat) => {
-          const count = cat === 'All' ? toolsList.length : toolsList.filter((t) => t.category === cat).length;
+          const count =
+            cat === 'All Tools'
+              ? toolsList.length
+              : toolsList.filter((t) =>
+                  t.category.toLowerCase().includes(cat.toLowerCase().replace(' tools', ''))
+                ).length;
           const isActive = activeCategory === cat;
           return (
             <button
               key={cat}
               type="button"
               onClick={() => setActiveCategory(cat)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-semibold shrink-0 transition-all flex items-center gap-2 ${
                 isActive
                   ? 'bg-accent text-black shadow-sm font-bold'
                   : 'bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border text-light-body dark:text-dark-body hover:border-accent'
               }`}
             >
               <span>{cat}</span>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-black/15 text-black' : 'bg-light-bg dark:bg-dark-bg text-light-body dark:text-dark-body'}`}>
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                  isActive
+                    ? 'bg-black/15 text-black font-bold'
+                    : 'bg-light-bg dark:bg-dark-bg text-light-body dark:text-dark-body font-mono'
+                }`}
+              >
                 {count}
               </span>
             </button>
@@ -356,7 +468,7 @@ export const SmartToolsPage = () => {
         })}
       </div>
 
-      {/* 1 TOOL PER BOX GRID: Each tool has its own dedicated card box */}
+      {/* 31 TOOLS INTERACTIVE GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
         {filteredTools.map((tool) => {
           const ToolIcon = tool.icon;
@@ -386,7 +498,7 @@ export const SmartToolsPage = () => {
 
                   {/* Title & Category */}
                   <div>
-                    <h3 className="font-heading font-bold text-sm sm:text-base text-light-heading dark:text-dark-heading group-hover:text-accent-dark dark:group-hover:text-accent-light transition-colors">
+                    <h3 className="font-heading font-bold text-sm sm:text-base text-light-heading dark:text-dark-heading group-hover:text-accent-dark dark:group-hover:text-accent-light transition-colors line-clamp-1">
                       {tool.name}
                     </h3>
                     <p className="text-[11px] font-semibold text-accent-dark/80 dark:text-accent-light/80 mt-0.5">
@@ -412,7 +524,7 @@ export const SmartToolsPage = () => {
                       handleLaunchTool(tool);
                     }}
                   >
-                    Launch {tool.name}
+                    Open Tool
                   </Button>
                 </div>
               </Card>
@@ -428,81 +540,32 @@ export const SmartToolsPage = () => {
             No smart tools match "{searchQuery}"
           </h3>
           <p className="text-xs text-light-body dark:text-dark-body">
-            Try a different search term or select another category filter.
+            Try a different search query or click "All Tools" to view the full suite.
           </p>
         </div>
       )}
 
-      {/* Tool Runner Modal */}
+      {/* DEDICATED TOOL MODAL WORKSPACE */}
       <Modal
         isOpen={Boolean(selectedTool)}
         onClose={() => setSelectedTool(null)}
-        title={selectedTool?.name || 'Smart Tool'}
+        title={selectedTool?.name || 'Smart Tool Workspace'}
         description={selectedTool?.description || ''}
+        className={selectedTool?.id === 'edit-pdf' ? 'max-w-4xl sm:max-w-5xl' : 'max-w-2xl sm:max-w-3xl'}
         footer={
-          <>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedTool(null)}
-              disabled={isProcessing}
-            >
-              Cancel
+          <div className="flex items-center justify-between w-full">
+            <Badge variant="brand" size="sm">
+              {selectedTool?.category}
+            </Badge>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedTool(null)}>
+              Close
             </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleProcessTool}
-              isLoading={isProcessing}
-              disabled={processSuccess}
-              rightIcon={ArrowRight}
-            >
-              {processSuccess ? 'Complete' : 'Run Tool'}
-            </Button>
-          </>
+          </div>
         }
       >
-        {selectedTool && (
-          <div className="space-y-4">
-            {processSuccess ? (
-              <div className="p-5 rounded-2xl bg-status-success/10 border border-status-success/30 text-center space-y-2">
-                <CheckCircle2 className="w-10 h-10 text-status-success mx-auto" />
-                <h4 className="font-heading font-bold text-sm text-status-success">
-                  {selectedTool.name} Processed Successfully!
-                </h4>
-                <p className="text-xs text-light-body dark:text-dark-body">
-                  Your operation is ready and verified. Result file is ready for download.
-                </p>
-                <div className="pt-2">
-                  <Button variant="outline" size="sm" onClick={() => setProcessSuccess(false)}>
-                    Process Another File
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="border-2 border-dashed border-light-border dark:border-dark-border hover:border-accent rounded-2xl p-6 text-center space-y-3 cursor-pointer bg-light-surface/40 dark:bg-dark-surface/40 transition-colors">
-                <div className="w-12 h-12 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center mx-auto text-accent-dark dark:text-accent-light">
-                  <Upload className="w-6 h-6" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold text-light-heading dark:text-dark-heading">
-                    Drop your input file here, or click to browse
-                  </p>
-                  <p className="text-[11px] text-light-body dark:text-dark-body">
-                    Supported formats for this tool: <span className="font-mono">{selectedTool.acceptedFiles}</span>
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <div className="p-3 rounded-xl bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border text-xs text-light-body dark:text-dark-body flex items-center justify-between">
-              <span className="font-medium">Category:</span>
-              <Badge variant="brand" size="sm">
-                {selectedTool.category}
-              </Badge>
-            </div>
-          </div>
-        )}
+        <div className="py-2">
+          {renderToolWorkspace()}
+        </div>
       </Modal>
     </div>
   );

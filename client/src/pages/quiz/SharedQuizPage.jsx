@@ -14,6 +14,7 @@ import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Skeleton } from '../../components/common/Skeleton';
+import { DocifyLogo } from '../../components/common/DocifyLogo';
 import { QuizCard } from '../../components/quiz/QuizCard';
 import { ScoreBoard } from '../../components/quiz/ScoreBoard';
 import { FlashcardDeck } from '../../components/flashcards/FlashcardDeck';
@@ -158,12 +159,10 @@ export const SharedQuizPage = () => {
     <div className="min-h-screen bg-light-bg dark:bg-dark-bg text-light-body dark:text-dark-body py-8 px-4 sm:px-6">
       {/* Top Branding Navigation */}
       <div className="max-w-4xl mx-auto mb-6 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-red to-brand-orange flex items-center justify-center text-white shadow-glow-red">
-            <Sparkles className="w-4 h-4" />
-          </div>
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <DocifyLogo size="sm" animated={true} withGlow={true} className="group-hover:scale-110 transition-transform" />
           <span className="font-heading font-extrabold text-base text-light-heading dark:text-dark-heading">
-            Docify <span className="text-brand-red font-medium text-xs">Assessment</span>
+            Doc<span className="bg-gradient-to-r from-cyan-400 to-teal-300 bg-clip-text text-transparent">ify</span> <span className="text-cyan-500 font-medium text-xs">Assessment</span>
           </span>
         </Link>
 

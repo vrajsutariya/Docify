@@ -20,6 +20,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { Dropdown } from '../common/Dropdown';
+import { DocifyLogo } from '../common/DocifyLogo';
 
 export const Navbar = ({ onOpenMobileSidebar, onOpenSearch }) => {
   const { isDark, toggleTheme } = useTheme();
@@ -107,16 +108,20 @@ export const Navbar = ({ onOpenMobileSidebar, onOpenSearch }) => {
           </button>
 
           <Link to="/dashboard" className="flex items-center gap-2.5 group">
-            {/* Logo Icon with Cyan Accent Gradient */}
-            <div className="w-9 h-9 rounded-xl bg-cyan-gradient flex items-center justify-center text-black font-heading font-extrabold text-lg shadow-sm group-hover:scale-105 transition-transform duration-200">
-              D
-            </div>
+            {/* New Unique & Trendy Docify Logo */}
+            <DocifyLogo
+              size="md"
+              variant="icon"
+              animated={true}
+              withGlow={true}
+              className="group-hover:scale-110 transition-transform duration-300"
+            />
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
                 <span className="font-heading font-extrabold text-xl tracking-tight text-light-heading dark:text-dark-heading">
-                  Doc<span className="text-accent-dark dark:text-accent-light">ify</span>
+                  Doc<span className="bg-gradient-to-r from-cyan-400 to-teal-300 bg-clip-text text-transparent">ify</span>
                 </span>
-                <span className="hidden sm:inline-block text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-accent/10 text-accent-dark dark:text-accent-light border border-accent/20">
+                <span className="hidden sm:inline-block text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/25">
                   AI Suite
                 </span>
               </div>

@@ -1,15 +1,21 @@
 {
   "short_name": "Docify",
-  "name": "Docify - SmartDataAbstract AI",
+  "name": "Docify - Smart Document & Data AI Platform",
   "icons": [
     {
       "src": "/favicon.svg",
       "type": "image/svg+xml",
       "sizes": "any"
+    },
+    {
+      "src": "/docify-logo.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
     }
   ],
   "start_url": "/",
-  "background_color": "#000000",
-  "theme_color": "#DC2626",
+  "background_color": "#030712",
+  "theme_color": "#06B6D4",
   "display": "standalone"
 }

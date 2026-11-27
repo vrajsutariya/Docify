@@ -21,6 +21,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { Dropdown } from '../components/common/Dropdown';
 import { CosmicOrbitalBackground } from '../components/auth/CosmicOrbitalBackground';
+import { DocifyLogo } from '../components/common/DocifyLogo';
 
 export const Register = () => {
   const [name, setName] = useState('');
@@ -116,9 +117,7 @@ export const Register = () => {
       {/* Top Header Bar */}
       <header className="relative z-20 px-6 py-4 flex items-center justify-between max-w-6xl mx-auto w-full">
         <Link to="/" className="flex items-center gap-2.5 group">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-cyan-300 flex items-center justify-center text-slate-950 font-heading font-black text-base shadow-[0_0_12px_rgba(6,182,212,0.4)] group-hover:scale-105 transition-transform">
-            D
-          </div>
+          <DocifyLogo size="sm" animated={true} withGlow={true} className="group-hover:scale-110 transition-transform" />
           <span className="font-heading font-extrabold text-lg tracking-tight text-slate-900 dark:text-white">
             Doc<span className="text-cyan-500 dark:text-cyan-400">ify</span>
           </span>
@@ -134,6 +133,9 @@ export const Register = () => {
           transition={{ duration: 0.4, ease: 'easeOut' }}
           className="text-center mb-6 sm:mb-8"
         >
+          <div className="flex justify-center mb-3">
+            <DocifyLogo size="lg" animated={true} withGlow={true} />
+          </div>
           <h1 className="font-heading font-black text-3xl sm:text-4xl md:text-5xl tracking-tight bg-gradient-to-r from-cyan-400 via-cyan-300 to-teal-200 bg-clip-text text-transparent drop-shadow-[0_0_24px_rgba(6,182,212,0.45)]">
             Docify
           </h1>

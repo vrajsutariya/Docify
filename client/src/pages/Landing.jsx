@@ -32,6 +32,7 @@ import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
 import { Card } from '../components/common/Card';
 import { Dropdown } from '../components/common/Dropdown';
+import { DocifyLogo } from '../components/common/DocifyLogo';
 
 export const Landing = () => {
   const { isAuthenticated, guestLogin } = useAuth();
@@ -178,16 +179,20 @@ export const Landing = () => {
       {/* 1. Marketing Navigation Bar */}
       <header className="sticky top-0 z-50 w-full border-b border-light-border dark:border-dark-border bg-white/80 dark:bg-black/80 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          {/* Brand Logo */}
+          {/* Brand Logo with New Design */}
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-xl bg-cyan-gradient flex items-center justify-center text-black font-heading font-extrabold text-lg shadow-sm group-hover:scale-105 transition-transform">
-              D
-            </div>
+            <DocifyLogo
+              size="md"
+              variant="icon"
+              animated={true}
+              withGlow={true}
+              className="group-hover:scale-110 transition-transform duration-300"
+            />
             <div className="flex items-center gap-1.5">
               <span className="font-heading font-extrabold text-xl tracking-tight text-light-heading dark:text-dark-heading">
-                Doc<span className="text-accent-dark dark:text-accent-light">ify</span>
+                Doc<span className="bg-gradient-to-r from-cyan-400 to-teal-300 bg-clip-text text-transparent">ify</span>
               </span>
-              <span className="hidden sm:inline-block text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-accent/10 text-accent-dark dark:text-accent-light border border-accent/20">
+              <span className="hidden sm:inline-block text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/25">
                 AI Suite
               </span>
             </div>
@@ -674,11 +679,9 @@ export const Landing = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-cyan-gradient flex items-center justify-center text-black font-heading font-extrabold text-base">
-                D
-              </div>
+              <DocifyLogo size="sm" animated={true} withGlow={true} />
               <span className="font-heading font-extrabold text-lg tracking-tight text-light-heading dark:text-dark-heading">
-                Doc<span className="text-accent-dark dark:text-accent-light">ify</span>
+                Doc<span className="bg-gradient-to-r from-cyan-400 to-teal-300 bg-clip-text text-transparent">ify</span>
               </span>
             </div>
 

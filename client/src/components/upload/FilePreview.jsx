@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../common/Button';
 import { Badge } from '../common/Badge';
+import { DocifyLoadingBar } from '../common/DocifyLoadingBar';
 import { formatBytes } from '../../services/documentService';
 
 export const getFileIcon = (fileName = '', mimeType = '') => {
@@ -154,28 +155,25 @@ export const FilePreview = ({
         )}
       </div>
 
-      {/* Upload & AI Processing Progress Bar */}
+      {/* Upload & AI Processing Progress Bar with Docify Logo */}
       {uploading && (
-        <div className="mt-4 space-y-1.5">
-          <div className="flex items-center justify-between text-xs font-medium">
-            <span className="text-light-heading dark:text-dark-heading flex items-center gap-1.5">
-              <span className="inline-block w-2 h-2 rounded-full bg-brand-orange animate-ping" />
-              {progress < 100
+        <div className="mt-4 p-3.5 rounded-xl bg-cyan-500/5 dark:bg-cyan-500/10 border border-cyan-500/20">
+          <DocifyLoadingBar
+            progress={progress < 100 ? progress : undefined}
+            label={
+              progress < 100
                 ? `Uploading document (${progress}%)...`
-                : 'Processing & extracting text with AI... (this may take a moment for large PDFs)'}
-            </span>
-            <span className="font-mono text-brand-red dark:text-brand-orangeBright font-bold">
-              {progress < 100 ? `${progress}%` : 'Processing'}
-            </span>
-          </div>
-          <div className="w-full h-2 rounded-full bg-light-border dark:bg-dark-border overflow-hidden">
-            <motion.div
-              className="h-full rounded-full bg-gradient-to-r from-brand-red via-brand-orange to-brand-orangeBright shadow-glow-red"
-              initial={{ width: '0%' }}
-              animate={{ width: progress < 100 ? `${progress}%` : '100%' }}
-              transition={{ ease: 'easeOut', duration: 0.3 }}
-            />
-          </div>
+                : 'Docify Engine: Extracting text & neural embeddings...'
+            }
+            sublabel={
+              progress < 100
+                ? 'Streaming secure file payload'
+                : 'Processing OCR, page coordinates, and 3-level abstractions'
+            }
+            size="md"
+            showLogo={true}
+            showPercentage={progress < 100}
+          />
         </div>
       )}
 

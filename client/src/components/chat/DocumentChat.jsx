@@ -35,6 +35,7 @@ import {
 import { Card } from '../common/Card';
 import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
+import { DocifyLogo } from '../common/DocifyLogo';
 import { askDocumentQuestion } from '../../services/chatService';
 
 /**
@@ -913,23 +914,23 @@ export const DocumentChat = ({
           })
         )}
 
-        {/* Loading / Thinking Indicator */}
+        {/* Loading / Thinking Indicator with Docify Logo */}
         {isLoading && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex gap-3 justify-start"
           >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-red to-brand-orange flex items-center justify-center text-white shrink-0 shadow-sm">
-              <Sparkles className="w-4 h-4 animate-spin" />
+            <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center shrink-0 shadow-glow-cyan">
+              <DocifyLogo size="xs" animated={true} withGlow={true} />
             </div>
             <div className="p-4 rounded-2xl rounded-tl-none bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border text-xs text-light-body dark:text-dark-body flex items-center gap-3">
               <span className="flex gap-1">
-                <span className="w-2 h-2 rounded-full bg-brand-red animate-bounce" />
-                <span className="w-2 h-2 rounded-full bg-brand-orange animate-bounce [animation-delay:0.2s]" />
-                <span className="w-2 h-2 rounded-full bg-accent-light animate-bounce [animation-delay:0.4s]" />
+                <span className="w-2 h-2 rounded-full bg-cyan-500 animate-bounce" />
+                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce [animation-delay:0.2s]" />
+                <span className="w-2 h-2 rounded-full bg-teal-300 animate-bounce [animation-delay:0.4s]" />
               </span>
-              <span>Thinking & formulating ChatGPT-level response...</span>
+              <span className="font-medium text-light-heading dark:text-dark-heading">Docify AI is thinking & formulating response...</span>
 
               <button
                 type="button"

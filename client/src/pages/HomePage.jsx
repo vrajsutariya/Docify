@@ -24,6 +24,7 @@ import { Modal } from '../components/common/Modal';
 import { Dropdown } from '../components/common/Dropdown';
 import { Skeleton, CardSkeleton } from '../components/common/Skeleton';
 import { Loader } from '../components/common/Loader';
+import { DocifyLogo } from '../components/common/DocifyLogo';
 import { useLanguage } from '../context/LanguageContext';
 
 export const HomePage = () => {
@@ -68,7 +69,8 @@ export const HomePage = () => {
     <div className="space-y-12 py-4">
       {/* Hero Section */}
       <section className="text-center max-w-4xl mx-auto space-y-6 pt-4">
-        <div className="flex justify-center">
+        <div className="flex justify-center items-center gap-3">
+          <DocifyLogo size="md" animated={true} withGlow={true} />
           <Badge variant="brand" size="md">
             <Sparkles className="w-3.5 h-3.5" />
             {t('app.subtitle', 'Next-Gen Document & Data AI Suite')}

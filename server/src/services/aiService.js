@@ -17,12 +17,43 @@ export const isGeminiConfigured = () => {
 export const getGeminiModel = (options = {}) => {
   if (!isGeminiConfigured()) return null;
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY.trim());
-  const modelName = process.env.AI_MODEL || 'gemini-1.5-flash';
+  const modelName = process.env.AI_MODEL || 'gemini-flash-lite-latest';
 
-  return genAI.getGenerativeModel({
+  const model = genAI.getGenerativeModel({
     model: modelName,
     ...options,
   });
+
+  // Wrap generateContent with automatic model fallback if 429 quota or 404 is encountered
+  const originalGenerate = model.generateContent.bind(model);
+  model.generateContent = async (...args) => {
+    try {
+      return await originalGenerate(...args);
+    } catch (err) {
+      const isQuotaOrMissing =
+        err.message?.includes('429') ||
+        err.message?.includes('Quota') ||
+        err.message?.includes('404') ||
+        err.message?.includes('not found');
+
+      if (isQuotaOrMissing) {
+        const fallbackModels = ['gemini-flash-lite-latest', 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-3.7-flash', 'gemini-3.8-flash'];
+        for (const fbName of fallbackModels) {
+          if (fbName === modelName) continue;
+          try {
+            console.log(`[aiService] Retrying with fallback model: ${fbName}...`);
+            const fbModel = genAI.getGenerativeModel({ model: fbName, ...options });
+            return await fbModel.generateContent(...args);
+          } catch (fbErr) {
+            console.warn(`[aiService] Fallback ${fbName} failed:`, fbErr.message?.slice(0, 100));
+          }
+        }
+      }
+      throw err;
+    }
+  };
+
+  return model;
 };
 
 /**

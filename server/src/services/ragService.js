@@ -301,16 +301,22 @@ export const findRelevantChunks = async (query, documentIds = [], topK = 4) => {
   const queryVector = await getGeminiEmbedding(query);
 
   if (queryVector) {
-    // If we have a query embedding, embed top BM25 candidates (up to 15 chunks to stay fast & within quota)
-    const sortedCandidates = [...allChunks].sort((a, b) => b.bm25Score - a.bm25Score).slice(0, 12);
+    // Parallelize embedding of top candidates with Promise.all to ensure sub-second latency
+    const sortedCandidates = [...allChunks].sort((a, b) => b.bm25Score - a.bm25Score).slice(0, 5);
 
-    for (const cand of sortedCandidates) {
-      const candVector = await getGeminiEmbedding(cand.text);
-      if (candVector) {
-        cand.cosineScore = cosineSimilarity(queryVector, candVector);
-        usedEmbeddings = true;
-      }
-    }
+    await Promise.all(
+      sortedCandidates.map(async (cand) => {
+        try {
+          const candVector = await getGeminiEmbedding(cand.text);
+          if (candVector) {
+            cand.cosineScore = cosineSimilarity(queryVector, candVector);
+            usedEmbeddings = true;
+          }
+        } catch {
+          // Keep BM25 score on individual chunk failure
+        }
+      })
+    );
   }
 
   // Combine scores:

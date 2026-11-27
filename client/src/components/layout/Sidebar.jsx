@@ -16,6 +16,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { DocifyLogo } from '../common/DocifyLogo';
 import { cn } from '../../utils/cn';
 
 export const Sidebar = ({
@@ -166,8 +167,8 @@ export const Sidebar = ({
       {/* Bottom: Pro Card & Collapse Toggle */}
       <div className="space-y-3 pt-4 border-t border-light-border dark:border-dark-border">
         {(!collapsed || isMobile) && (
-          <div className="p-3 rounded-xl bg-accent/5 dark:bg-accent/10 border border-accent/20 flex items-start gap-2.5">
-            <Sparkles className="w-4 h-4 text-accent-dark dark:text-accent-light shrink-0 mt-0.5" />
+          <div className="p-3 rounded-xl bg-cyan-500/5 dark:bg-cyan-500/10 border border-cyan-500/20 flex items-start gap-2.5 shadow-xs">
+            <DocifyLogo size="xs" animated={true} withGlow={true} className="mt-0.5" />
             <div className="text-[11px] leading-tight">
               <span className="font-semibold text-light-heading dark:text-dark-heading block">Docify AI Suite</span>
               <span className="text-light-body dark:text-dark-body text-[10px]">Multilingual Intelligence</span>
@@ -237,12 +238,10 @@ export const Sidebar = ({
               className="relative w-72 max-w-[80vw] bg-white dark:bg-black border-r border-light-border dark:border-dark-border p-4 shadow-2xl flex flex-col justify-between z-10"
             >
               <div className="flex items-center justify-between pb-4 border-b border-light-border dark:border-dark-border mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-cyan-gradient flex items-center justify-center text-black font-heading font-extrabold text-base">
-                    D
-                  </div>
+                <div className="flex items-center gap-2.5">
+                  <DocifyLogo size="sm" animated={true} withGlow={true} />
                   <span className="font-heading font-bold text-lg text-light-heading dark:text-dark-heading">
-                    Doc<span className="text-accent-dark dark:text-accent-light">ify</span>
+                    Doc<span className="bg-gradient-to-r from-cyan-400 to-teal-300 bg-clip-text text-transparent">ify</span>
                   </span>
                 </div>
                 <button
