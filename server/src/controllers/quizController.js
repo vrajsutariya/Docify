@@ -3,6 +3,7 @@ import { Quiz } from '../models/Quiz.js';
 import { Document } from '../models/Document.js';
 import { generateQuiz } from '../services/quizService.js';
 import { successResponse, errorResponse } from '../utils/responseWrapper.js';
+import { logActivity, recordHistory } from '../services/loggerService.js';
 
 /**
  * Parses user page range string (e.g. "1-5", "1, 3, 5") into an array of page numbers
@@ -111,6 +112,31 @@ export const createQuiz = async (req, res) => {
       isPublic: true,
       attempts: [],
     });
+
+    if (userId) {
+      await logActivity({
+        userId,
+        userEmail: req.user?.email,
+        action: 'QUIZ_GENERATED',
+        module: 'documind',
+        details: `Generated quiz "${quiz.title}" with ${quiz.questions.length} questions`,
+      });
+
+      await recordHistory({
+        userId,
+        itemType: 'quiz',
+        itemId: quiz._id,
+        title: quiz.title,
+        summary: `${quiz.questions.length} questions (${quiz.difficulty})`,
+        action: 'Interactive Knowledge Quiz',
+        module: 'documind',
+        metadata: {
+          shareId: quiz.shareId,
+          difficulty: quiz.difficulty,
+          questionCount: quiz.questions.length,
+        },
+      });
+    }
 
     return successResponse(res, quiz, 'Quiz and flashcards generated successfully', 201);
   } catch (error) {

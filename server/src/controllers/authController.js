@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
 import { successResponse, errorResponse } from '../utils/responseWrapper.js';
+import { logActivity } from '../services/loggerService.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'docify_jwt_super_secret_production_ready_key_987654321';
 const JWT_EXPIRES_IN = '7d';
@@ -56,6 +57,15 @@ export const register = async (req, res) => {
 
     const token = generateToken(newUser);
 
+    await logActivity({
+      userId: newUser._id,
+      userEmail: newUser.email,
+      action: 'USER_REGISTER',
+      module: 'auth',
+      details: `New account registered: ${newUser.name}`,
+      ipAddress: req.ip || '127.0.0.1',
+    });
+
     return successResponse(
       res,
       {
@@ -96,6 +106,15 @@ export const login = async (req, res) => {
 
     const token = generateToken(user);
 
+    await logActivity({
+      userId: user._id,
+      userEmail: user.email,
+      action: 'USER_LOGIN',
+      module: 'auth',
+      details: `User logged in`,
+      ipAddress: req.ip || '127.0.0.1',
+    });
+
     return successResponse(
       res,
       {
@@ -132,6 +151,15 @@ export const guestLogin = async (req, res) => {
     }
 
     const token = generateToken(user);
+
+    await logActivity({
+      userId: user._id,
+      userEmail: user.email,
+      action: 'USER_LOGIN',
+      module: 'auth',
+      details: `User logged in`,
+      ipAddress: req.ip || '127.0.0.1',
+    });
 
     return successResponse(
       res,
@@ -203,5 +231,78 @@ export const updatePreferences = async (req, res) => {
   } catch (error) {
     console.error('[Auth UpdatePreferences Error]:', error);
     return errorResponse(res, 'Failed to update preferences', 500, error);
+  }
+};
+
+/**
+ * @route   PUT /api/auth/profile
+ * @desc    Update user profile name
+ * @access  Protected
+ */
+export const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.id || req.user._id;
+    const { name } = req.body;
+
+    if (!name || name.trim().length < 2) {
+      return errorResponse(res, 'Name must be at least 2 characters long', 400);
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { name: name.trim() },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) return errorResponse(res, 'User not found', 404);
+
+    return successResponse(res, { user: updatedUser.toJSON() }, 'Profile updated successfully');
+  } catch (error) {
+    console.error('[Auth UpdateProfile Error]:', error);
+    return errorResponse(res, 'Failed to update profile', 500, error);
+  }
+};
+
+/**
+ * @route   PUT /api/auth/password
+ * @desc    Change password with current password verification
+ * @access  Protected
+ */
+export const changePassword = async (req, res) => {
+  try {
+    const userId = req.user.id || req.user._id;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return errorResponse(res, 'Please provide both current and new password', 400);
+    }
+
+    if (newPassword.length < 6) {
+      return errorResponse(res, 'New password must be at least 6 characters long', 400);
+    }
+
+    const user = await User.findById(userId);
+    if (!user) return errorResponse(res, 'User not found', 404);
+
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return errorResponse(res, 'Current password is incorrect', 400);
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    await logActivity({
+      userId: user._id,
+      userEmail: user.email,
+      action: 'PASSWORD_CHANGE',
+      module: 'auth',
+      details: 'User password changed successfully',
+    });
+
+    return successResponse(res, null, 'Password changed successfully');
+  } catch (error) {
+    console.error('[Auth ChangePassword Error]:', error);
+    return errorResponse(res, 'Failed to change password', 500, error);
   }
 };

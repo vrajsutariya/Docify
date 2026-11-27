@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './ProtectedRoute';
+import { AdminRoute } from './AdminRoute';
 import { AppLayout } from '../components/layout/AppLayout';
 
 // Public Pages
@@ -46,7 +47,14 @@ export const AppRoutes = () => {
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/favorites" element={<FavoritesPage />} />
         <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/admin/*" element={<AdminPage />} />
+        <Route
+          path="/admin/*"
+          element={
+            <AdminRoute>
+              <AdminPage />
+            </AdminRoute>
+          }
+        />
       </Route>
 
       {/* Fallback to Landing */}

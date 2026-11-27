@@ -5,6 +5,8 @@ import documentRoutes from './documentRoutes.js';
 import quizRoutes from './quizRoutes.js';
 import dataRoutes from './dataRoutes.js';
 import toolsRoutes from './toolsRoutes.js';
+import adminRoutes from './adminRoutes.js';
+import historyRoutes from './historyRoutes.js';
 
 const router = Router();
 
@@ -22,6 +24,12 @@ router.use('/data', dataRoutes);
 
 // Mount SmartTools Sub-router (Module 3)
 router.use('/tools', toolsRoutes);
+
+// Mount Admin Sub-router
+router.use('/admin', adminRoutes);
+
+// Mount History & Favorites Sub-router
+router.use('/history', historyRoutes);
 
 // Root API Health & Meta
 router.get('/health', (req, res) => {

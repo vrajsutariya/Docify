@@ -7,6 +7,30 @@ import * as qrService from '../services/qrService.js';
 import { extractTextFromImage } from '../services/ocrService.js';
 import { getGeminiModel, isGeminiConfigured, safeParseJson } from '../services/aiService.js';
 import { successResponse, errorResponse } from '../utils/responseWrapper.js';
+import { logActivity, recordHistory } from '../services/loggerService.js';
+
+const logToolAction = async (req, action, details, title = null) => {
+  try {
+    const userId = req.user?.id || req.user?._id;
+    await logActivity({
+      userId,
+      userEmail: req.user?.email || 'User',
+      action,
+      module: 'smarttools',
+      details,
+    });
+    if (userId && title) {
+      await recordHistory({
+        userId,
+        itemType: 'tool_action',
+        title,
+        summary: details,
+        action,
+        module: 'smarttools',
+      });
+    }
+  } catch (_) {}
+};
 
 // Helper to safely read file buffer and remove temp file
 const getBufferAndClean = (file) => {
@@ -40,6 +64,8 @@ export const mergePdfs = async (req, res, next) => {
     const buffers = getBuffersAndClean(files);
     const mergedPdfBytes = await pdfService.mergePDFs(buffers);
 
+    await logToolAction(req, 'TOOL_PDF_MERGE', `Merged ${files.length} PDF documents`, 'Merged PDF Document');
+
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="docify-merged.pdf"');
     return res.send(Buffer.from(mergedPdfBytes));
@@ -60,6 +86,8 @@ export const splitPdf = async (req, res, next) => {
     }
 
     const splitBytes = await pdfService.splitPDF(buffer, { ranges, pageIndices: parsedIndices });
+
+    await logToolAction(req, 'TOOL_PDF_SPLIT', `Split PDF into pages (${ranges || 'custom'})`, 'Split PDF Document');
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="docify-split.pdf"');

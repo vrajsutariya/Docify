@@ -4,6 +4,7 @@ import { Document } from '../models/Document.js';
 import { User } from '../models/User.js';
 import { parseDocument } from '../services/documentParserService.js';
 import { successResponse, errorResponse } from '../utils/responseWrapper.js';
+import { logActivity, recordHistory } from '../services/loggerService.js';
 
 /**
  * Upload and parse a new document
@@ -52,6 +53,30 @@ export const uploadDocument = async (req, res) => {
       $inc: { storageUsedBytes: req.file.size },
     }).catch((err) => {
       console.warn('[DocumentController] Could not increment storageUsedBytes:', err.message);
+    });
+
+    // Record activity log & timeline history
+    await logActivity({
+      userId,
+      userEmail: req.user?.email,
+      action: 'DOC_UPLOAD',
+      module: 'documind',
+      details: `Uploaded ${document.originalName} (${(document.fileSize / 1024).toFixed(1)} KB)`,
+    });
+
+    await recordHistory({
+      userId,
+      itemType: 'document',
+      itemId: document._id,
+      title: document.originalName,
+      summary: `${document.pageCount} pages, ${(document.fileSize / 1024).toFixed(1)} KB`,
+      action: 'Document Ingestion & Abstract',
+      module: 'documind',
+      metadata: {
+        fileType: document.fileType,
+        pageCount: document.pageCount,
+        detectedLanguage: document.detectedLanguage,
+      },
     });
 
     return successResponse(

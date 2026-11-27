@@ -60,6 +60,22 @@ export const authService = {
   },
 
   /**
+   * Update user display name
+   */
+  async updateProfile(name) {
+    const response = await api.put('/auth/profile', { name });
+    return response;
+  },
+
+  /**
+   * Change user password
+   */
+  async changePassword(currentPassword, newPassword) {
+    const response = await api.put('/auth/password', { currentPassword, newPassword });
+    return response;
+  },
+
+  /**
    * Logout helper (clears tokens from storage)
    */
   logout() {

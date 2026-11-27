@@ -137,8 +137,37 @@ export const Sidebar = ({
 
   const navContent = (isMobile = false) => (
     <div className="flex flex-col h-full justify-between">
-      {/* Top: Links */}
-      <div className="space-y-6">
+      {/* Top: Header with Collapse Toggle & Navigation Links */}
+      <div className="space-y-4">
+        {/* Top Collapse Toggle (In / Out Icon - Desktop only) */}
+        {!isMobile && (
+          <div
+            className={cn(
+              'flex items-center pb-2.5 mb-1 border-b border-light-border dark:border-dark-border',
+              collapsed ? 'justify-center' : 'justify-between px-1'
+            )}
+          >
+            {!collapsed && (
+              <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-light-body/70 dark:text-dark-body/70">
+                Navigation
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              title={collapsed ? t('common.expandSidebar', 'Expand sidebar') : t('common.collapseSidebar', 'Collapse sidebar')}
+              aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              className="p-1.5 rounded-lg border border-transparent hover:border-light-border dark:hover:border-dark-border hover:bg-light-surface dark:hover:bg-dark-surface text-light-body dark:text-dark-body hover:text-accent dark:hover:text-accent-light transition-all cursor-pointer group"
+            >
+              {collapsed ? (
+                <ChevronRight className="w-4 h-4 text-accent transition-transform group-hover:translate-x-0.5" />
+              ) : (
+                <ChevronLeft className="w-4 h-4 text-light-body dark:text-dark-body group-hover:text-accent dark:group-hover:text-accent-light transition-transform group-hover:-translate-x-0.5" />
+              )}
+            </button>
+          </div>
+        )}
+
         {/* Main Section */}
         <div>
           {(!collapsed || isMobile) && (
@@ -164,7 +193,7 @@ export const Sidebar = ({
         </div>
       </div>
 
-      {/* Bottom: Pro Card & Collapse Toggle */}
+      {/* Bottom: Pro Card (No collapse button at bottom) */}
       <div className="space-y-3 pt-4 border-t border-light-border dark:border-dark-border">
         {(!collapsed || isMobile) && (
           <div className="p-3 rounded-xl bg-cyan-500/5 dark:bg-cyan-500/10 border border-cyan-500/20 flex items-start gap-2.5 shadow-xs">
@@ -174,30 +203,6 @@ export const Sidebar = ({
               <span className="text-light-body dark:text-dark-body text-[10px]">Multilingual Intelligence</span>
             </div>
           </div>
-        )}
-
-        {/* Collapse toggle (Desktop only) */}
-        {!isMobile && (
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            title={collapsed ? t('common.expandSidebar', 'Expand sidebar') : t('common.collapseSidebar', 'Collapse sidebar')}
-            className={cn(
-              'w-full flex items-center gap-2 p-2 rounded-xl text-xs text-light-body dark:text-dark-body hover:text-light-heading dark:hover:text-dark-heading hover:bg-light-surface dark:hover:bg-dark-surface transition-colors',
-              collapsed ? 'justify-center' : 'justify-between'
-            )}
-          >
-            {!collapsed && (
-              <span className="text-xs font-medium truncate">
-                {t('common.collapseSidebar', 'Collapse sidebar')}
-              </span>
-            )}
-            {collapsed ? (
-              <ChevronRight className="w-4 h-4 shrink-0 text-accent" />
-            ) : (
-              <ChevronLeft className="w-4 h-4 shrink-0" />
-            )}
-          </button>
         )}
       </div>
     </div>

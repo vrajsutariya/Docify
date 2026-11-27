@@ -12,6 +12,7 @@ import {
   generateDataReport,
 } from '../services/dataAnalysisService.js';
 import { successResponse, errorResponse } from '../utils/responseWrapper.js';
+import { logActivity, recordHistory } from '../services/loggerService.js';
 
 /**
  * Helper to verify dataset ownership
@@ -145,6 +146,31 @@ export const uploadDataset = async (req, res) => {
       summaryStats: profiling.summaryStats,
       chartRecommendations: profiling.chartRecommendations,
     });
+
+    if (userId) {
+      await logActivity({
+        userId,
+        userEmail: req.user?.email,
+        action: 'DATASET_UPLOAD',
+        module: 'datainsight',
+        details: `Uploaded ${dataset.originalName} (${dataset.rowCount} rows, ${dataset.columnCount} cols)`,
+      });
+
+      await recordHistory({
+        userId,
+        itemType: 'dataset',
+        itemId: dataset._id,
+        title: dataset.originalName,
+        summary: `${dataset.rowCount} rows, ${dataset.columnCount} columns`,
+        action: 'Data Profiling & Custom Charts',
+        module: 'datainsight',
+        metadata: {
+          rowCount: dataset.rowCount,
+          columnCount: dataset.columnCount,
+          fileType: dataset.fileType,
+        },
+      });
+    }
 
     return successResponse(
       res,

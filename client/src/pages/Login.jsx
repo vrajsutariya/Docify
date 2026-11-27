@@ -76,7 +76,7 @@ export const Login = () => {
   return (
     <div className="relative min-h-screen bg-slate-50 dark:bg-[#030712] text-slate-900 dark:text-slate-100 flex flex-col justify-between overflow-x-hidden selection:bg-cyan-500/30 selection:text-cyan-600 dark:selection:text-cyan-200 transition-colors duration-200">
       {/* Cosmic background with orbital rings, nodes, and top beam */}
-      <CosmicOrbitalBackground />
+      <CosmicOrbitalBackground flyUp={isSubmitting || isGuestSubmitting} />
 
       {/* Top Header Bar */}
       <header className="relative z-20 px-6 py-4 flex items-center justify-between max-w-6xl mx-auto w-full">
@@ -86,6 +86,42 @@ export const Login = () => {
             Doc<span className="text-cyan-500 dark:text-cyan-400">ify</span>
           </span>
         </Link>
+
+        {/* Right Header: Theme Mode Button (Identical to Navbar/App Mode Switcher) */}
+        <div className="flex items-center gap-2">
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            type="button"
+            onClick={toggleTheme}
+            aria-label="Toggle Theme Mode"
+            title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            className="p-2 rounded-xl border border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface text-light-heading dark:text-dark-heading hover:border-accent dark:hover:border-accent-light transition-colors relative cursor-pointer"
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              {isDark ? (
+                <motion.div
+                  key="sun"
+                  initial={{ rotate: -90, opacity: 0 }}
+                  animate={{ rotate: 0, opacity: 1 }}
+                  exit={{ rotate: 90, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <Sun className="w-4 h-4 text-accent-light" />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="moon"
+                  initial={{ rotate: 90, opacity: 0 }}
+                  animate={{ rotate: 0, opacity: 1 }}
+                  exit={{ rotate: -90, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <Moon className="w-4 h-4 text-accent-dark" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.button>
+        </div>
       </header>
 
       {/* Main Content Area */}
@@ -93,8 +129,14 @@ export const Login = () => {
         {/* Brand Headline (Matching Screenshot Typography) */}
         <motion.div
           initial={{ opacity: 0, y: -16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: 'easeOut' }}
+          animate={{
+            opacity: (isSubmitting || isGuestSubmitting) ? 0 : 1,
+            y: (isSubmitting || isGuestSubmitting) ? -600 : 0,
+          }}
+          transition={{
+            duration: (isSubmitting || isGuestSubmitting) ? 2.4 : 0.4,
+            ease: (isSubmitting || isGuestSubmitting) ? [0.25, 1, 0.5, 1] : 'easeOut',
+          }}
           className="text-center mb-6 sm:mb-8"
         >
           <div className="flex justify-center mb-3">
@@ -103,10 +145,10 @@ export const Login = () => {
           <h1 className="font-heading font-black text-3xl sm:text-4xl md:text-5xl tracking-tight bg-gradient-to-r from-cyan-400 via-cyan-300 to-teal-200 bg-clip-text text-transparent drop-shadow-[0_0_24px_rgba(6,182,212,0.45)]">
             Docify
           </h1>
-          <p className="font-heading font-bold text-lg sm:text-xl md:text-2xl text-white tracking-tight mt-1.5">
+          <p className="font-heading font-bold text-lg sm:text-xl md:text-2xl text-slate-800 dark:text-white tracking-tight mt-1.5">
             One platform.
           </p>
-          <p className="font-heading font-semibold text-xs sm:text-sm text-cyan-400 tracking-wider mt-0.5">
+          <p className="font-heading font-semibold text-xs sm:text-sm text-cyan-600 dark:text-cyan-400 tracking-wider mt-0.5">
             End-to-End Operations.
           </p>
         </motion.div>
@@ -114,17 +156,24 @@ export const Login = () => {
         {/* Central Glassmorphic Card */}
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: 12 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.35, ease: 'easeOut' }}
+          animate={{
+            opacity: (isSubmitting || isGuestSubmitting) ? 0 : 1,
+            scale: (isSubmitting || isGuestSubmitting) ? 1.05 : 1,
+            y: (isSubmitting || isGuestSubmitting) ? -750 : 0,
+          }}
+          transition={{
+            duration: (isSubmitting || isGuestSubmitting) ? 2.4 : 0.35,
+            ease: (isSubmitting || isGuestSubmitting) ? [0.25, 1, 0.5, 1] : 'easeOut',
+          }}
           className="w-full max-w-[420px]"
         >
-          <div className="bg-[#0b1329]/80 backdrop-blur-xl border border-cyan-500/25 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-[0_0_45px_rgba(6,182,212,0.12)] space-y-5">
+          <div className="bg-white/85 dark:bg-[#0b1329]/80 backdrop-blur-xl border border-slate-200/90 dark:border-cyan-500/25 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-[0_12px_40px_rgba(6,182,212,0.1)] dark:shadow-[0_0_45px_rgba(6,182,212,0.12)] space-y-5">
             {/* Card Header */}
             <div className="text-center space-y-1">
-              <h2 className="font-heading font-bold text-xl text-white tracking-tight">
+              <h2 className="font-heading font-bold text-xl text-slate-900 dark:text-white tracking-tight">
                 {t('auth.loginTitle', 'Welcome Back')}
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {t('auth.loginSubtitle', 'Login to your account to continue')}
               </p>
             </div>
@@ -136,7 +185,7 @@ export const Login = () => {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 flex items-start gap-2.5 text-xs text-red-400"
+                  className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 flex items-start gap-2.5 text-xs text-red-500 dark:text-red-400"
                 >
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>{errorMessage}</span>
@@ -148,7 +197,7 @@ export const Login = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Username / Email */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-300">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   {t('auth.emailLabel', 'Username')}
                 </label>
                 <div className="relative">
@@ -158,14 +207,14 @@ export const Login = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={t('auth.emailPlaceholder', 'Enter your email')}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700/70 bg-[#060b1b]/80 text-slate-100 placeholder-slate-500 text-xs sm:text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700/70 bg-slate-50 dark:bg-[#060b1b]/80 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-xs sm:text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
                   />
                 </div>
               </div>
 
               {/* Password */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-300">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   {t('auth.passwordLabel', 'Password')}
                 </label>
                 <div className="relative">
@@ -175,12 +224,12 @@ export const Login = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={t('auth.passwordPlaceholder', 'Enter your password')}
-                    className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-slate-700/70 bg-[#060b1b]/80 text-slate-100 placeholder-slate-500 text-xs sm:text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
+                    className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700/70 bg-slate-50 dark:bg-[#060b1b]/80 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-xs sm:text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition-colors"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-500 dark:hover:text-cyan-300 transition-colors"
                     aria-label="Toggle password visibility"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -189,13 +238,13 @@ export const Login = () => {
 
                 {/* Forgot Password */}
                 <div className="flex justify-end pt-0.5">
-                  <span className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer transition-colors">
+                  <span className="text-xs text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 dark:hover:text-cyan-300 hover:underline cursor-pointer transition-colors">
                     {t('auth.forgotPassword', 'Forgot password?')}
                   </span>
                 </div>
               </div>
 
-              {/* Submit Button (Vibrant Cyan Solid, Matches Photo) */}
+              {/* Submit Button (Vibrant Cyan Solid) */}
               <button
                 type="submit"
                 disabled={isSubmitting}
@@ -213,11 +262,11 @@ export const Login = () => {
 
               {/* Divider */}
               <div className="relative flex py-1 items-center">
-                <div className="flex-grow border-t border-slate-800"></div>
-                <span className="flex-shrink mx-3 text-[10px] text-slate-500 uppercase font-mono tracking-wider">
+                <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+                <span className="flex-shrink mx-3 text-[10px] text-slate-400 dark:text-slate-500 uppercase font-mono tracking-wider">
                   {t('auth.orDivider', 'Or explore first')}
                 </span>
-                <div className="flex-grow border-t border-slate-800"></div>
+                <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
               </div>
 
               {/* Guest / Demo Access Button */}
@@ -225,13 +274,13 @@ export const Login = () => {
                 type="button"
                 onClick={handleGuestExplore}
                 disabled={isGuestSubmitting}
-                className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold border border-dashed border-cyan-500/40 hover:border-cyan-400 text-cyan-300 bg-cyan-500/5 hover:bg-cyan-500/15 backdrop-blur-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold border border-dashed border-cyan-500/40 hover:border-cyan-400 text-cyan-600 dark:text-cyan-300 bg-cyan-500/5 hover:bg-cyan-500/15 backdrop-blur-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
               >
                 {isGuestSubmitting ? (
                   <span className="inline-block w-3.5 h-3.5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
-                    <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                    <Sparkles className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400" />
                     <span>{t('auth.guestButton', 'Explore as Guest (No Login Required)')}</span>
                   </>
                 )}
@@ -239,11 +288,11 @@ export const Login = () => {
             </form>
 
             {/* Switch to Register */}
-            <div className="pt-2 text-center border-t border-slate-800/80 text-xs text-slate-400">
+            <div className="pt-2 text-center border-t border-slate-200 dark:border-slate-800/80 text-xs text-slate-500 dark:text-slate-400">
               <span>{t('auth.dontHaveAccount', "Don't have an account?")} </span>
               <Link
                 to="/register"
-                className="font-semibold text-cyan-400 hover:text-cyan-300 hover:underline ml-1"
+                className="font-semibold text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 dark:hover:text-cyan-300 hover:underline ml-1"
               >
                 {t('auth.signUpButton', 'Create Free Account')}
               </Link>
